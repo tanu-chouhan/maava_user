@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@food/api/*": ["./src/services/api/*"],
+      "@food/*": ["./src/modules/Food/*"]
+    }
+  },
+  "include": ["src"]
+}

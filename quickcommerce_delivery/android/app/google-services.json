@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "86386028636",
+    "project_id": "quickcommerce-a5dc1",
+    "storage_bucket": "quickcommerce-a5dc1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:86386028636:android:460ea07ddc2f48c47a7699",
+        "android_client_info": {
+          "package_name": "com.quick.commerce"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSeTEnbQ-ykA3bhtGklzeABJ6C7yH8TgQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:86386028636:android:fca61e67dd118d187a7699",
+        "android_client_info": {
+          "package_name": "com.quick.seller"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSeTEnbQ-ykA3bhtGklzeABJ6C7yH8TgQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:86386028636:android:f237af3fa04574267a7699",
+        "android_client_info": {
+          "package_name": "com.quickcommerce.delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSeTEnbQ-ykA3bhtGklzeABJ6C7yH8TgQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

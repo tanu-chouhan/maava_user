@@ -1,0 +1,121 @@
+import { Routes, Route, Navigate, useLocation } from "react-router-dom"
+import { useEffect, Suspense, lazy } from "react"
+import ProtectedRoute from "@food/components/ProtectedRoute"
+import AuthRedirect from "@food/components/AuthRedirect"
+import Loader from "@food/components/Loader"
+import PushSoundEnableButton from "@food/components/PushSoundEnableButton"
+import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
+import { isModuleAuthenticated } from "@food/utils/auth"
+import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications"
+import { applyModulePowerScanning, getCachedSettings } from "@food/utils/businessSettings"
+import { PublicAppConfigProvider } from "@food/context/PublicAppConfigContext"
+
+// User (customer) Module
+const UserRouter = lazy(() => import("@food/components/user/UserRouter"))
+
+// Restaurant Module
+const RestaurantRouter = lazy(() => import("@food/components/restaurant/RestaurantRouter"))
+
+// Admin Module
+const AdminRouter = lazy(() => import("@food/components/admin/AdminRouter"))
+const AdminLogin = lazy(() => import("@food/pages/admin/auth/AdminLogin"))
+const AdminSignup = lazy(() => import("@food/pages/admin/auth/AdminSignup"))
+const AdminForgotPassword = lazy(() => import("@food/pages/admin/auth/AdminForgotPassword"))
+
+/**
+ * Scroll to top on route change.
+ *
+ * The exception this used to carry -- skip the reset when the customer home page
+ * had a pending scroll restore -- went with that page. Nothing left under this
+ * module wants to preserve scroll across a navigation.
+ */
+function ScrollToTop() {
+  const location = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname, location.search, location.key]);
+  return null;
+}
+
+function RestaurantGlobalNotificationListenerInner() {
+  useRestaurantNotifications()
+  return null
+}
+
+function RestaurantGlobalNotificationListener() {
+  const location = useLocation()
+  const isRestaurantRoute =
+    location.pathname.startsWith("/seller") &&
+    !location.pathname.startsWith("/sellers")
+  const isRestaurantAuthRoute =
+    location.pathname === "/seller/login" ||
+    location.pathname === "/seller/auth/sign-in" ||
+    location.pathname === "/seller/signup" ||
+    location.pathname === "/seller/signup-email" ||
+    location.pathname === "/seller/forgot-password" ||
+    location.pathname === "/seller/otp" ||
+    location.pathname === "/seller/welcome" ||
+    location.pathname === "/seller/auth/google-callback"
+  const isOrderManagedRoute =
+    location.pathname === "/seller" ||
+    location.pathname === "/seller/orders" ||
+    location.pathname.startsWith("/seller/orders/")
+
+  const shouldListen =
+    isRestaurantRoute &&
+    !isRestaurantAuthRoute &&
+    !isOrderManagedRoute &&
+    isModuleAuthenticated("restaurant")
+
+  if (!shouldListen) {
+    return null
+  }
+
+  return <RestaurantGlobalNotificationListenerInner />
+}
+
+export default function App() {
+  const location = useLocation()
+
+  useEffect(() => {
+    registerWebPushForCurrentModule(location.pathname)
+  }, [location.pathname])
+
+  useEffect(() => {
+    const resolveModule = () => {
+      if (location.pathname.startsWith("/seller")) return "restaurant"
+      return "user"
+    }
+
+    const cached = getCachedSettings()
+    if (cached) {
+      applyModulePowerScanning(resolveModule(), cached)
+    }
+  }, [location.pathname])
+
+  return (
+    <PublicAppConfigProvider>
+      <ScrollToTop />
+      <RestaurantGlobalNotificationListener />
+      <PushSoundEnableButton />
+      <Suspense fallback={<Loader />}>
+        <Routes>
+          {/* Restaurant Module - Already mapped to /restaurant */}
+          <Route
+            path="restaurant/*"
+            element={
+              <RestaurantRouter />
+            }
+          />
+
+          {/* Customer storefront. Restored so maava.in serves a shop rather
+              than a redirect to the admin panel. */}
+          <Route path="user/*" element={<UserRouter />} />
+
+          <Route path="/" element={<Navigate to="/food/user" replace />} />
+          <Route path="*" element={<Navigate to="/food/user" replace />} />
+        </Routes>
+      </Suspense>
+    </PublicAppConfigProvider>
+  )
+}
