@@ -446,6 +446,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
                       const SizedBox(height: 12),
 
+                      // Card 3b: Tip your delivery partner
+                      _buildTipCard(
+                        checkoutState.deliveryTip,
+                        textColor,
+                        secondaryColor,
+                        isDark,
+                      ),
+
+                      const SizedBox(height: 12),
+
                       // Card 4: To Pay / Bill Details Card
                       _buildBillDetailsCard(
                         itemTotal,
@@ -1292,6 +1302,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
             ],
 
+            if ((pricing?.deliveryTip ?? 0) > 0) ...[
+              const SizedBox(height: 12),
+              _buildBillRow(
+                'Delivery Partner Tip',
+                '₹${pricing!.deliveryTip.toStringAsFixed(0)}',
+                secondaryColor,
+                textColor,
+              ),
+            ],
+
             if (savings > 0) ...[
               const SizedBox(height: 12),
               _buildBillRow(
@@ -1332,6 +1352,104 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Tip presets. The chosen amount is sent to /calculate; every rupee figure
+  /// on screen still comes back from the server, nothing is summed here.
+  /// Tapping the selected chip again clears the tip.
+  Widget _buildTipCard(
+    double selected,
+    Color textColor,
+    Color secondaryColor,
+    bool isDark,
+  ) {
+    const presets = [10.0, 20.0, 30.0, 50.0];
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Tip your delivery partner',
+            style: TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '100% of it goes to them.',
+            style: TextStyle(fontSize: 12, color: secondaryColor),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (final amount in presets) ...[
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      Haptics.light();
+                      unawaited(
+                        ref
+                            .read(checkoutViewModelProvider.notifier)
+                            .setDeliveryTip(amount),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: selected == amount
+                            ? AppColors.primary.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: selected == amount
+                              ? AppColors.primary
+                              : (isDark
+                                    ? AppColors.borderDark
+                                    : const Color(0xFFE2E8F0)),
+                          width: selected == amount ? 1.5 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '₹${amount.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: selected == amount
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: selected == amount
+                              ? AppColors.primary
+                              : textColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (amount != presets.last) const SizedBox(width: 8),
+              ],
+            ],
+          ),
         ],
       ),
     );

@@ -82,6 +82,7 @@ class OrderRemoteDataSource {
     String? zoneId,
     String? couponCode,
     String deliveryMode = 'basic',
+    double deliveryTip = 0,
     DateTime? scheduledAt,
   }) async {
     final payload = {
@@ -91,6 +92,7 @@ class OrderRemoteDataSource {
       'zoneId': ?zoneId,
       'couponCode': ?couponCode,
       'deliveryMode': deliveryMode,
+      if (deliveryTip > 0) 'deliveryTip': deliveryTip,
       'scheduledAt': ?scheduledAt?.toUtc().toIso8601String(),
     };
 
@@ -136,6 +138,7 @@ class OrderRemoteDataSource {
     String? note,
     String? deliveryInstructions,
     bool sendCutlery = false,
+    double deliveryTip = 0,
     String? zoneId,
   }) async {
     final payload = {
@@ -151,6 +154,7 @@ class OrderRemoteDataSource {
       'note': ?note,
       'deliveryInstructions': ?deliveryInstructions,
       'sendCutlery': sendCutlery,
+      if (deliveryTip > 0) 'deliveryTip': deliveryTip,
       'zoneId': ?zoneId,
     };
 

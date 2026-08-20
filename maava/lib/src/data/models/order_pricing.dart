@@ -11,6 +11,9 @@ class OrderPricing {
   final double platformFee;
   final double quickDeliveryFee;
   final double discount;
+
+  /// Rider tip the customer chose. Server-echoed, already inside [total].
+  final double deliveryTip;
   final double total;
 
   /// Percentages behind [tax] and [deliveryFeeGst], for labelling bill rows.
@@ -39,6 +42,7 @@ class OrderPricing {
     required this.platformFee,
     required this.quickDeliveryFee,
     required this.discount,
+    this.deliveryTip = 0,
     required this.total,
     this.gstRate = 0,
     this.deliveryFeeGstRate = 0,
@@ -76,6 +80,7 @@ class OrderPricing {
       discount: _d(
         json['discount'] ?? json['discountAmount'] ?? json['couponDiscount'],
       ),
+      deliveryTip: _d(json['deliveryTip'] ?? json['tip']),
       total: _d(json['total'] ?? json['finalAmount'] ?? json['totalPayable']),
       gstRate: _d(json['gstRate']),
       deliveryFeeGstRate: _d(json['deliveryFeeGstRate']),
