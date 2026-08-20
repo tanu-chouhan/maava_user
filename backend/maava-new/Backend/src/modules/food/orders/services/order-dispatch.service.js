@@ -127,7 +127,7 @@ export function buildIncomingOrderPushData(order, payload, acceptanceDeadlineAt)
     // reads as a broken push rather than a missing field. The restaurant app hit
     // exactly this. These give the rider app ready-made strings straight from
     // message.data.
-    title: 'New order available!',
+    title: orderSourceTitle(order),
     body: bodyLines.join('\n'),
     orderId: s(order?._id),
     orderMongoId: s(order?._id),
@@ -300,10 +300,20 @@ function scheduleDispatchRetry(orderId, attempt, delayMs, vertical) {
 }
 
 /** Does a rider's chosen service cover this order's vertical? A missing choice
- *  (riders registered before the field existed) means 'both'. */
+ *  (riders registered before the field existed) means 'both'; 'none' means both
+ *  toggles are off — the rider receives nothing at all. */
 export function partnerServesVertical(serviceType, vertical) {
+  if (serviceType === 'none') return false;
   if (!vertical) return true;
   return !serviceType || serviceType === 'both' || serviceType === vertical;
+}
+
+/** Rider-facing source label for an order — used in every alert title so the
+ *  partner knows which brand the pickup is for before opening anything. */
+export function orderSourceTitle(order) {
+  return order?.vertical === 'quick'
+    ? 'New order from HiberMart'
+    : 'New order from Maava Food';
 }
 
 async function listNearbyOnlineDeliveryPartners(
@@ -558,7 +568,7 @@ export async function tryAutoAssign(orderId, options = {}) {
             await notifyOwnersActionableAlert(
               [{ ownerType: 'DELIVERY_PARTNER', ownerId: p.partnerId }],
               {
-                title: 'New order available!',
+                title: orderSourceTitle(order),
                 body: `Order #${order.order_id || order._id} is still available. Tap to accept.`,
                 androidTag: `order_${order._id.toString()}`,
                 androidChannelId: 'new_orders_v2',
@@ -612,7 +622,7 @@ export async function tryAutoAssign(orderId, options = {}) {
           await notifyOwnersActionableAlert(
             [{ ownerType: 'DELIVERY_PARTNER', ownerId: p.partnerId }],
             {
-              title: 'New order available!',
+              title: orderSourceTitle(order),
               body: `Order #${order.order_id || order._id} is available. You have ${Math.round(DRIVER_ACCEPT_WINDOW_MS / 1000)} seconds to accept!`,
               // Two messages â€” see notifyOwnersActionableAlert.
               //

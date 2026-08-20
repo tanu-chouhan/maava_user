@@ -92,13 +92,14 @@ const deliveryPartnerSchema = new mongoose.Schema(
         upiQrCode: { type: String },
         /**
          * Which vertical(s) this rider serves: restaurant food, quick-commerce
-         * mart, or both. Chosen at registration, changeable from the profile.
+         * mart, both, or none (both toggles off — a deliberate pause).
+         * Chosen at registration, changeable from the profile toggles.
          * Defaults to 'both' so riders registered before the field existed keep
          * receiving everything, which is what they were getting already.
          */
         serviceType: {
             type: String,
-            enum: ['food', 'quick', 'both'],
+            enum: ['food', 'quick', 'both', 'none'],
             default: 'both'
         },
         availabilityStatus: {

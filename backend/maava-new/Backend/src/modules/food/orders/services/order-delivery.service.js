@@ -243,11 +243,15 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
   // Riders only see unassigned offers from the vertical(s) they signed up to
   // serve. Applies to the open-offers branch alone: an order already assigned
   // to this rider must always be visible, whatever their current selection.
+  // 'none' (both toggles off) matches no vertical at all — the impossible
+  // value keeps the query shape identical instead of forking the $or.
   const serviceType = partner?.serviceType;
   const verticalFilter =
     serviceType === 'food' || serviceType === 'quick'
       ? { vertical: serviceType }
-      : {};
+      : serviceType === 'none'
+        ? { vertical: '__none__' }
+        : {};
 
   const filter = hasActiveDelivery
     ? {
