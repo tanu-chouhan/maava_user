@@ -199,82 +199,120 @@ class _CouponCelebrationState extends State<_CouponCelebration>
   }
 }
 
-/// One confetti chip: where it starts, where it drifts, and how it tumbles.
+enum ParticleShape { circle, rectangle, star, diamond }
+
+/// One confetti particle with 2-phase physics:
+/// Phase 1: Upward launch from left/right edge toward top center collision zone.
+/// Phase 2: Mid-air impact collision, elastic rebound bounce, and gravitational downward fall.
 @visibleForTesting
 class ConfettiParticle {
   const ConfettiParticle({
     required this.origin,
-    required this.velocity,
+    required this.targetCollision,
+    required this.collisionTime,
+    required this.preVelocity,
+    required this.postVelocity,
     required this.color,
     required this.size,
     required this.spin,
-    required this.round,
+    required this.shape,
+    required this.fromLeft,
   });
 
   final Offset origin;
-  final Offset velocity;
+  final Offset targetCollision;
+  final double collisionTime;
+  final Offset preVelocity;
+  final Offset postVelocity;
   final Color color;
   final double size;
   final double spin;
-  final bool round;
+  final ParticleShape shape;
+  final bool fromLeft;
 
-  /// Normalised centre at [t] (0..1): the launch vector plus gravity. Exposed
-  /// so a test can prove chips are actually on screen mid-burst — a burst that
-  /// flies off instantly looks identical to one that never rendered.
-  Offset positionAt(double t) => Offset(
-        origin.dx + velocity.dx * t,
-        origin.dy + velocity.dy * t + _gravity * t * t * 0.5,
-      );
+  /// Calculates normalised position (0..1) at time progress [t]
+  Offset positionAt(double t) {
+    if (t <= collisionTime) {
+      // Phase 1: Upward motion from left/right edge toward top collision zone
+      final normT = (t / collisionTime).clamp(0.0, 1.0);
+      final easeT = Curves.decelerate.transform(normT);
+      final dx = origin.dx + (targetCollision.dx - origin.dx) * easeT;
+      final dy = origin.dy + (targetCollision.dy - origin.dy) * easeT;
+      return Offset(dx, dy);
+    } else {
+      // Phase 2: Post-collision rebound bounce and gravitational downward fall
+      final dt = t - collisionTime;
+      final dx = targetCollision.dx + postVelocity.dx * dt * (1.0 - 0.35 * dt);
+      final dy = targetCollision.dy + postVelocity.dy * dt + 1.65 * dt * dt * 0.5;
+      return Offset(dx, dy);
+    }
+  }
 
-  /// Gravity in normalised units, tuned so chips float high up into top screen area.
-  static const _gravity = 0.65;
+  /// Calculates rotation angle at time progress [t]
+  double rotationAt(double t) {
+    if (t <= collisionTime) {
+      return spin * t;
+    } else {
+      final dt = t - collisionTime;
+      return spin * collisionTime + (spin * 2.2) * dt;
+    }
+  }
 
   static const _palette = [
-    Color(0xFFFFC107),
-    Color(0xFFFF6B6B),
-    Color(0xFF4ECDC4),
-    Color(0xFF7C5CFF),
-    Color(0xFF2ECC71),
-    Color(0xFFFF8A3D),
-    Color(0xFF3498DB),
-    Color(0xFFE91E63),
+    Color(0xFFFFD700), // Gold
+    Color(0xFFFF2A6D), // Electric Crimson
+    Color(0xFF00F5D4), // Bright Turquoise
+    Color(0xFFFF6B00), // Neon Orange
+    Color(0xFFFF007F), // Vivid Magenta
+    Color(0xFF7B2CBF), // Deep Purple
+    Color(0xFF10B981), // Emerald Green
+    Color(0xFF00B4D8), // Sky Blue
   ];
 
-  /// Upward fans and top-floating confetti particles that cover the top of screen.
+  /// Generate streams from left & right screen edges that shoot upward and collide at top area.
   static List<ConfettiParticle> burst({required int count, required int seed}) {
     final rand = math.Random(seed);
     return List.generate(count, (i) {
-      if (i < count * 0.75) {
-        // Upward cannons from left/right lower-mid screen extending high to top
-        final fromLeft = i.isEven;
-        final angle = (fromLeft ? 1.0 : -1.0) *
-            (math.pi / 8 + rand.nextDouble() * math.pi / 3);
-        final speed = 0.85 + rand.nextDouble() * 0.70;
-        return ConfettiParticle(
-          origin: Offset(fromLeft ? 0.05 : 0.95, 0.60),
-          velocity: Offset(math.sin(angle) * speed, -math.cos(angle) * speed),
-          color: _palette[rand.nextInt(_palette.length)],
-          size: 6 + rand.nextDouble() * 7,
-          spin: (rand.nextDouble() - 0.5) * 12,
-          round: rand.nextBool(),
-        );
-      } else {
-        // High top-screen cascade floating down
-        return ConfettiParticle(
-          origin: Offset(
-            0.05 + rand.nextDouble() * 0.90,
-            -0.05 + rand.nextDouble() * 0.35,
-          ),
-          velocity: Offset(
-            (rand.nextDouble() - 0.5) * 0.5,
-            0.15 + rand.nextDouble() * 0.45,
-          ),
-          color: _palette[rand.nextInt(_palette.length)],
-          size: 5 + rand.nextDouble() * 7,
-          spin: (rand.nextDouble() - 0.5) * 10,
-          round: rand.nextBool(),
-        );
-      }
+      final fromLeft = i.isEven;
+
+      // 1. Origin: Starts at lower-left or lower-right screen edge
+      final originX = fromLeft
+          ? (0.01 + rand.nextDouble() * 0.08)
+          : (0.91 + rand.nextDouble() * 0.08);
+      final originY = 0.72 + rand.nextDouble() * 0.16;
+
+      // 2. Collision Target: High top center area near top edge (y ~ 0.08 .. 0.22)
+      final targetX = 0.35 + rand.nextDouble() * 0.30;
+      final targetY = 0.08 + rand.nextDouble() * 0.14;
+
+      // 3. Collision Time: Moment of collision (t_c ~ 0.34 .. 0.42)
+      final collisionTime = 0.34 + rand.nextDouble() * 0.08;
+
+      // 4. Pre-collision velocity
+      final preVx = (targetX - originX) / collisionTime;
+      final preVy = (targetY - originY) / collisionTime;
+
+      // 5. Post-collision rebound velocity (bounce outward & upward impulse)
+      final bounceDirection = fromLeft ? -1.0 : 1.0;
+      final postVx = (bounceDirection * (0.35 + rand.nextDouble() * 0.45)) +
+          (rand.nextDouble() - 0.5) * 0.3;
+      final postVy = -0.25 - rand.nextDouble() * 0.30;
+
+      final shapeTypes = ParticleShape.values;
+      final shape = shapeTypes[rand.nextInt(shapeTypes.length)];
+
+      return ConfettiParticle(
+        origin: Offset(originX, originY),
+        targetCollision: Offset(targetX, targetY),
+        collisionTime: collisionTime,
+        preVelocity: Offset(preVx, preVy),
+        postVelocity: Offset(postVx, postVy),
+        color: _palette[rand.nextInt(_palette.length)],
+        size: 6.0 + rand.nextDouble() * 8.0,
+        spin: (rand.nextDouble() - 0.5) * 14,
+        shape: shape,
+        fromLeft: fromLeft,
+      );
     });
   }
 }
@@ -290,9 +328,27 @@ class ConfettiPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (progress == 0) return;
     final paint = Paint();
-    // Fade out over the last third so the burst settles instead of vanishing.
-    final fade = progress < 0.66 ? 1.0 : (1 - (progress - 0.66) / 0.34);
+    final fade = progress < 0.70 ? 1.0 : (1.0 - (progress - 0.70) / 0.30);
 
+    // 1. Render Top Center Collision Shockwave Impact Ring
+    if (progress >= 0.30 && progress <= 0.58) {
+      final ringT = ((progress - 0.30) / 0.28).clamp(0.0, 1.0);
+      final ringRadius = 15.0 + ringT * 90.0;
+      final ringAlpha = (1.0 - ringT).clamp(0.0, 1.0) * 0.65;
+
+      final shockwavePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0 * (1.0 - ringT)
+        ..color = const Color(0xFFFFD700).withValues(alpha: ringAlpha);
+
+      canvas.drawCircle(
+        Offset(size.width * 0.50, size.height * 0.14),
+        ringRadius,
+        shockwavePaint,
+      );
+    }
+
+    // 2. Render Confetti Particles with physics trajectory
     for (final p in particles) {
       final at = p.positionAt(progress);
       final centre = Offset(at.dx * size.width, at.dy * size.height);
@@ -301,21 +357,66 @@ class ConfettiPainter extends CustomPainter {
       paint.color = p.color.withValues(alpha: fade.clamp(0.0, 1.0));
       canvas.save();
       canvas.translate(centre.dx, centre.dy);
-      canvas.rotate(p.spin * progress);
-      if (p.round) {
-        canvas.drawCircle(Offset.zero, p.size / 2, paint);
-      } else {
-        canvas.drawRect(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: p.size,
-            height: p.size * 0.55,
-          ),
-          paint,
-        );
+      canvas.rotate(p.rotationAt(progress));
+
+      switch (p.shape) {
+        case ParticleShape.circle:
+          canvas.drawCircle(Offset.zero, p.size / 2, paint);
+          break;
+
+        case ParticleShape.rectangle:
+          canvas.drawRect(
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: p.size,
+              height: p.size * 0.55,
+            ),
+            paint,
+          );
+          break;
+
+        case ParticleShape.star:
+          canvas.drawPath(_createStarPath(p.size), paint);
+          break;
+
+        case ParticleShape.diamond:
+          canvas.drawPath(_createDiamondPath(p.size), paint);
+          break;
       }
+
       canvas.restore();
     }
+  }
+
+  Path _createStarPath(double size) {
+    final path = Path();
+    final r = size / 2;
+    final innerR = r * 0.45;
+    for (int i = 0; i < 8; i++) {
+      final radius = i.isEven ? r : innerR;
+      final angle = i * math.pi / 4;
+      final x = math.cos(angle) * radius;
+      final y = math.sin(angle) * radius;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    return path;
+  }
+
+  Path _createDiamondPath(double size) {
+    final path = Path();
+    final w = size * 0.65;
+    final h = size;
+    path.moveTo(0, -h / 2);
+    path.lineTo(w / 2, 0);
+    path.lineTo(0, h / 2);
+    path.lineTo(-w / 2, 0);
+    path.close();
+    return path;
   }
 
   @override
