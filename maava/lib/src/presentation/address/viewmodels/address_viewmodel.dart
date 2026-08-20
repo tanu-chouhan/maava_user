@@ -64,7 +64,17 @@ class AddressViewModel extends Notifier<List<AddressModel>> {
   Future<bool> addAddress(AddressModel address) async {
     try {
       final created = await _remote.addAddress(address);
-      state = [...state, created];
+      // NOT a plain append. The backend keeps one address per label
+      // (Home/Office/Other): posting a second "Home" UPDATES the existing row
+      // and returns it with its ORIGINAL id. Appending that here left two list
+      // entries with the same id, and every id lookup (the home header, the
+      // selected-address chip) matched the stale first copy — so the UI kept
+      // showing the old address until a full reload.
+      state = [
+        for (final a in state)
+          if (a.id != created.id) a,
+        created,
+      ];
       return true;
     } catch (e) {
       error = _messageOf(e);

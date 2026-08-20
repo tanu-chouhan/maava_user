@@ -116,7 +116,10 @@ void main() {
     // guard for the client reading only one of the two.
     final result = await repo.verifyOtp(phone: testPhone, otp: '12');
     expect(result.isSuccess, isFalse);
-    expect(result.message, contains('4 digits'));
+    // The exact wording has changed before ("OTP must be 4 digits" →
+    // "OTP must be 4-6 digits") — assert the backend's reason came through,
+    // not its precise phrasing.
+    expect(result.message, contains('digits'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('profile update round-trips through PATCH', () async {
