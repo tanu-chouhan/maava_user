@@ -23,6 +23,11 @@ class CheckoutState {
   /// [OrderPricing.hasCouponApplied] is what decides whether it actually landed.
   final String? couponCode;
   final String deliveryMode;
+
+  /// Rider tip in rupees. Held here rather than in the bill because it is an
+  /// input to `/calculate`, not an output of it -- the server owns every other
+  /// figure on this screen.
+  final double deliveryTip;
   final String? addressId;
   final bool priceChangesAccepted;
 
@@ -32,6 +37,7 @@ class CheckoutState {
     this.error,
     this.couponCode,
     this.deliveryMode = 'basic',
+    this.deliveryTip = 0,
     this.addressId,
     this.priceChangesAccepted = false,
   });
@@ -51,6 +57,7 @@ class CheckoutState {
     String? error,
     String? couponCode,
     String? deliveryMode,
+    double? deliveryTip,
     String? addressId,
     bool? priceChangesAccepted,
     bool clearError = false,
@@ -62,6 +69,7 @@ class CheckoutState {
       error: clearError ? null : (error ?? this.error),
       couponCode: clearCoupon ? null : (couponCode ?? this.couponCode),
       deliveryMode: deliveryMode ?? this.deliveryMode,
+      deliveryTip: deliveryTip ?? this.deliveryTip,
       addressId: addressId ?? this.addressId,
       priceChangesAccepted: priceChangesAccepted ?? this.priceChangesAccepted,
     );
@@ -105,6 +113,18 @@ class CheckoutViewModel extends Notifier<CheckoutState> {
 
   Future<void> setDeliveryMode(String mode) async {
     state = state.copyWith(deliveryMode: mode);
+    await recalculate();
+  }
+
+  /// Sets the rider tip and re-fetches the bill.
+  ///
+  /// Clamped to the server's own 0-1000 range: outside it the API answers 400
+  /// rather than clamping, which would surface as a failed checkout rather
+  /// than a corrected tip.
+  Future<void> setDeliveryTip(double tip) async {
+    final clamped = tip.isFinite && tip > 0 ? (tip > 1000 ? 1000.0 : tip) : 0.0;
+    if (clamped == state.deliveryTip) return;
+    state = state.copyWith(deliveryTip: clamped);
     await recalculate();
   }
 
@@ -154,6 +174,7 @@ class CheckoutViewModel extends Notifier<CheckoutState> {
             zoneId: ref.read(currentZoneIdProvider),
             couponCode: state.couponCode,
             deliveryMode: state.deliveryMode,
+            deliveryTip: state.deliveryTip,
           );
       state = state.copyWith(
         calculation: calculation,
@@ -206,6 +227,7 @@ class CheckoutViewModel extends Notifier<CheckoutState> {
             customerPhone: customerPhone,
             paymentMethod: paymentMethod,
             deliveryMode: state.deliveryMode,
+            deliveryTip: state.deliveryTip,
             note: note,
             deliveryInstructions: deliveryInstructions,
             sendCutlery: sendCutlery,

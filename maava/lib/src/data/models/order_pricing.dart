@@ -11,6 +11,10 @@ class OrderPricing {
   final double platformFee;
   final double quickDeliveryFee;
   final double discount;
+
+  /// Rider tip the customer chose. Server-side it is added after the discount
+  /// and is never taxed, so it appears in [total] but in no other line.
+  final double deliveryTip;
   final double total;
 
   /// Percentages behind [tax] and [deliveryFeeGst], for labelling bill rows.
@@ -39,6 +43,7 @@ class OrderPricing {
     required this.platformFee,
     required this.quickDeliveryFee,
     required this.discount,
+    this.deliveryTip = 0,
     required this.total,
     this.gstRate = 0,
     this.deliveryFeeGstRate = 0,
@@ -76,6 +81,7 @@ class OrderPricing {
       discount: _d(
         json['discount'] ?? json['discountAmount'] ?? json['couponDiscount'],
       ),
+      deliveryTip: _d(json['deliveryTip']),
       total: _d(json['total'] ?? json['finalAmount'] ?? json['totalPayable']),
       gstRate: _d(json['gstRate']),
       deliveryFeeGstRate: _d(json['deliveryFeeGstRate']),

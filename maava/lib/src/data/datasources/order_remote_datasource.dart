@@ -82,6 +82,7 @@ class OrderRemoteDataSource {
     String? zoneId,
     String? couponCode,
     String deliveryMode = 'basic',
+    double deliveryTip = 0,
     DateTime? scheduledAt,
   }) async {
     final payload = {
@@ -91,6 +92,10 @@ class OrderRemoteDataSource {
       'zoneId': ?zoneId,
       'couponCode': ?couponCode,
       'deliveryMode': deliveryMode,
+      // Omitted entirely when zero rather than sent as 0: the field is
+      // optional server-side, and the API rejects anything outside 0-1000
+      // with a 400 instead of clamping it.
+      if (deliveryTip > 0) 'deliveryTip': deliveryTip,
       'scheduledAt': ?scheduledAt?.toUtc().toIso8601String(),
     };
 
@@ -133,6 +138,7 @@ class OrderRemoteDataSource {
     required String customerPhone,
     String paymentMethod = 'razorpay',
     String deliveryMode = 'basic',
+    double deliveryTip = 0,
     String? note,
     String? deliveryInstructions,
     bool sendCutlery = false,
@@ -148,6 +154,11 @@ class OrderRemoteDataSource {
       'pricing': pricing,
       'paymentMethod': paymentMethod,
       'deliveryMode': deliveryMode,
+      // Needed at the top level even though `pricing` is echoed back with a
+      // deliveryTip inside it: the server recalculates the bill from this dto
+      // and reads the tip from here, so a tip only present in `pricing` is
+      // silently dropped and the customer is charged the untipped total.
+      if (deliveryTip > 0) 'deliveryTip': deliveryTip,
       'note': ?note,
       'deliveryInstructions': ?deliveryInstructions,
       'sendCutlery': sendCutlery,

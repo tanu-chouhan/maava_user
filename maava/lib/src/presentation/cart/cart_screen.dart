@@ -413,6 +413,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
                       const SizedBox(height: 12),
 
+                      // Card 3b: Rider tip
+                      _buildTipCard(textColor, secondaryColor, isDark),
+
+                      const SizedBox(height: 12),
+
                       // Card 4: To Pay / Bill Details Card
                       _buildBillDetailsCard(
                         itemTotal,
@@ -1226,6 +1231,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               originalAmount: null,
             ),
 
+            if ((pricing?.deliveryTip ?? 0) > 0) ...[
+              const SizedBox(height: 12),
+              _buildBillRow(
+                'Delivery Tip',
+                '₹${pricing!.deliveryTip.toStringAsFixed(0)}',
+                secondaryColor,
+                textColor,
+              ),
+            ],
+
             if (packingCharges > 0) ...[
               const SizedBox(height: 12),
               _buildBillRow(
@@ -1299,6 +1314,84 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Rider tip selector.
+  ///
+  /// Chips only, no free-text field: the API rejects anything outside 0-1000
+  /// with a 400 rather than clamping, and a fixed set of amounts cannot
+  /// produce a value the server will refuse.
+  ///
+  /// Tapping re-runs `/calculate` -- the tip is never added to the total
+  /// locally, because the server owns every figure on this screen.
+  Widget _buildTipCard(Color textColor, Color secondaryColor, bool isDark) {
+    const options = <double>[0, 10, 20, 30, 50];
+    final selected = ref.watch(
+      checkoutViewModelProvider.select((s) => s.deliveryTip),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Tip your delivery partner',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'They receive 100% of it.',
+            style: TextStyle(fontSize: 12, color: secondaryColor),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: options.map((amount) {
+              final isSelected = selected == amount;
+              return InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  Haptics.light();
+                  ref
+                      .read(checkoutViewModelProvider.notifier)
+                      .setDeliveryTip(amount);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary
+                        : (isDark ? AppColors.surfaceDark : const Color(0xFFF1F5F9)),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    amount == 0 ? 'No tip' : '₹${amount.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white : textColor,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );
