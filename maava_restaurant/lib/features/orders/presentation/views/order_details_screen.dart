@@ -101,7 +101,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
         title: Text(
-          _order != null ? 'Order FOD-${_order!.displayId}' : 'Order Details',
+          _order != null ? 'Order ${_order!.displayId}' : 'Order Details',
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -456,7 +456,7 @@ class _StatusHeaderCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                'FOD-${order.displayId}',
+                order.displayId,
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,

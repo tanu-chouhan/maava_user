@@ -591,7 +591,7 @@ class _OrderCard extends ConsumerWidget {
                           children: [
                             Flexible(
                               child: Text(
-                                'FOD-${order.displayId}',
+                                order.displayId,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 16,

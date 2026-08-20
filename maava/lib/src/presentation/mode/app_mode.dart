@@ -6,15 +6,20 @@ import '../../quick/di/repository_providers.dart' as quick_di;
 /// one wallet — but each mode keeps its own home, catalog, cart and checkout.
 enum AppMode { food, quick }
 
-/// Last-used mode, persisted so the app reopens where the user left off.
+/// Which vertical is on screen. Always starts at Food.
+///
+/// A cold start deliberately ignores whatever mode the user was last in: MAAVA
+/// is a food app that also sells groceries, so the launch destination is Food
+/// even for someone who closed the app inside Mart. Switching within a session
+/// still works normally — only the *restore* was dropped.
+///
+/// The stored key is still written so anything that wants "last used" can read
+/// it, but nothing reads it back into [build] any more.
 class AppModeNotifier extends Notifier<AppMode> {
   static const _key = 'app.mode';
 
   @override
-  AppMode build() =>
-      ref.read(quick_di.localStorageProvider).getString(_key) == 'quick'
-          ? AppMode.quick
-          : AppMode.food;
+  AppMode build() => AppMode.food;
 
   void set(AppMode mode) {
     state = mode;

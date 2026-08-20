@@ -172,6 +172,20 @@ class RestaurantModel {
       offers.add(json['discountText'] as String);
     }
 
+    // `activeOffers` is what the restaurant listing actually sends — the other
+    // three keys above are legacy shapes that production no longer populates,
+    // which is why seller-created offers never reached a card. Each entry
+    // carries a server-built `summary` ("50% OFF up to ₹100 above ₹199"), so
+    // the discount, its cap and its minimum-order condition are rendered
+    // exactly as the backend computed them rather than re-derived here.
+    for (final o in (json['activeOffers'] as List?) ?? const []) {
+      if (o is! Map) continue;
+      final summary = o['summary'];
+      if (summary is String && summary.trim().isNotEmpty) {
+        offers.add(summary.trim());
+      }
+    }
+
     final isPureVeg = json['pureVegRestaurant'] == true ||
         json['isVeg'] == true ||
         json['isPureVeg'] == true ||
@@ -223,7 +237,7 @@ class RestaurantModel {
       priceForOne: priceForOne,
       featuredDishName: featuredDishName,
       isNearAndFast: json['isNearAndFast'] as bool? ?? false,
-      offerBadges: offers,
+      offerBadges: offers.toSet().toList(),
       restaurantTags: [
         if (isPureVeg) 'Pure Veg',
         if (isFreeDeliv) 'Free Delivery',

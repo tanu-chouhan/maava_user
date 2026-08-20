@@ -362,6 +362,39 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             // Top Header Bar with Watermark
             _buildHeader(context, cartRestaurant, isDark),
 
+            // The restaurant's live offer, on the cart it applies to.
+            //
+            // Same server-built summary the card and detail screens show, read
+            // from the restaurant the cart already resolved — so it cannot
+            // disagree with what the customer saw on the way in, and it
+            // vanishes when the restaurant withdraws the offer.
+            if (cartRestaurant != null && cartRestaurant.offerBadges.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.local_offer_rounded,
+                      size: 15,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        cartRestaurant.offerBadges.first,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // Main Content Area with Curved Top
             Expanded(
               child: Container(

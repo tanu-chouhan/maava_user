@@ -459,6 +459,48 @@ class _RestaurantInfo extends ConsumerWidget {
           ],
         ),
 
+        // Live offer from the restaurant's own panel.
+        //
+        // The text is the server-built summary ("50% OFF up to ₹100 above
+        // ₹199"), so the discount, its cap and its minimum-order condition all
+        // come from the backend — nothing is composed or assumed here. The row
+        // disappears the moment the restaurant removes the offer.
+        if (restaurant.offerBadges.isNotEmpty) ...[
+          SizedBox(height: 5.h),
+          Row(
+            children: [
+              Icon(
+                Icons.local_offer_rounded,
+                size: 13.sp,
+                color: AppColors.primary,
+              ),
+              SizedBox(width: 4.w),
+              Expanded(
+                child: Text(
+                  restaurant.offerBadges.first,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ),
+              if (restaurant.offerBadges.length > 1)
+                Text(
+                  '+${restaurant.offerBadges.length - 1} more',
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary.withValues(alpha: 0.75),
+                  ),
+                ),
+            ],
+          ),
+        ],
+
         SizedBox(height: 3.h),
 
         // 2. Delivery Time / Cost Line & Right-Side Inline Location / Status

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/utils/haptics.dart';
 import '../../presentation/branding/app_colors.dart';
 
 /// The coupon-applied celebration, shared by both verticals.
@@ -42,8 +43,14 @@ class _CouponCelebrationState extends State<_CouponCelebration>
     duration: _burst,
   )..forward();
 
+  @override
+  void initState() {
+    super.initState();
+    Haptics.success();
+  }
+
   late final List<ConfettiParticle> _particles = ConfettiParticle.burst(
-    count: 44,
+    count: 75,
     seed: widget.code.hashCode,
   );
 
@@ -55,17 +62,13 @@ class _CouponCelebrationState extends State<_CouponCelebration>
 
   @override
   Widget build(BuildContext context) {
-    final saved = '₹${widget.savings.toStringAsFixed(0)}';
+    final saved = '₹${widget.savings % 1 == 0 ? widget.savings.toStringAsFixed(0) : widget.savings.toStringAsFixed(2)}';
 
-    // Expanded deliberately: a dialog hands its child *loose* constraints, so a
-    // bare Stack shrink-wraps to the card and `Positioned.fill` then covers only
-    // the card — the confetti painted behind it and was never visible.
     return SizedBox.expand(
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Confetti sits behind and around the card, and ignores pointers so it
-          // never swallows a tap meant for the dialog.
+          // Confetti sits behind and around the card, and ignores pointers
           Positioned.fill(
             child: IgnorePointer(
               child: AnimatedBuilder(
@@ -82,92 +85,109 @@ class _CouponCelebrationState extends State<_CouponCelebration>
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        height: 64,
-                        width: 64,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.local_offer_rounded,
-                          size: 30,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'You saved $saved',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
-                          color: Color(0xFF16211A),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          widget.code.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.6,
+              child: ScaleTransition(
+                scale: CurvedAnimation(
+                  parent: _confetti,
+                  curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack),
+                ),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  elevation: 12,
+                  shadowColor: Colors.black.withValues(alpha: 0.2),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 64,
+                          width: 64,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.local_offer_rounded,
+                            size: 32,
                             color: AppColors.primary,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Coupon applied to your order 🎉',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.35,
-                          color: Color(0xFF6B7A70),
+                        const SizedBox(height: 18),
+                        Text(
+                          'You saved $saved',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            height: 1.15,
+                            color: Color(0xFF16211A),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          style: TextButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              width: 1,
                             ),
                           ),
-                          child: const Text(
-                            'Continue',
+                          child: Text(
+                            widget.code.toUpperCase(),
                             style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Coupon applied to your order 🎉',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            height: 1.35,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF6B7A70),
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Haptics.light();
+                              Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              'Continue',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -206,8 +226,8 @@ class ConfettiParticle {
         origin.dy + velocity.dy * t + _gravity * t * t * 0.5,
       );
 
-  /// Gravity in normalised units, tuned so chips arc over rather than fly off.
-  static const _gravity = 1.15;
+  /// Gravity in normalised units, tuned so chips float high up into top screen area.
+  static const _gravity = 0.65;
 
   static const _palette = [
     Color(0xFFFFC107),
@@ -216,28 +236,45 @@ class ConfettiParticle {
     Color(0xFF7C5CFF),
     Color(0xFF2ECC71),
     Color(0xFFFF8A3D),
+    Color(0xFF3498DB),
+    Color(0xFFE91E63),
   ];
 
-  /// Two upward fans from the lower corners, the way a party popper throws.
+  /// Upward fans and top-floating confetti particles that cover the top of screen.
   static List<ConfettiParticle> burst({required int count, required int seed}) {
     final rand = math.Random(seed);
     return List.generate(count, (i) {
-      final fromLeft = i.isEven;
-      // Fan *inward*: a chip launched from the left corner has to travel right
-      // to cross the card. With these signs mirrored every chip flew straight
-      // off its own side of the screen, so the burst was never visible.
-      final angle =
-          (fromLeft ? 1.0 : -1.0) *
-          (math.pi / 5 + rand.nextDouble() * math.pi / 3);
-      final speed = 0.55 + rand.nextDouble() * 0.55;
-      return ConfettiParticle(
-        origin: Offset(fromLeft ? 0.06 : 0.94, 0.78),
-        velocity: Offset(math.sin(angle) * speed, -math.cos(angle) * speed),
-        color: _palette[rand.nextInt(_palette.length)],
-        size: 5 + rand.nextDouble() * 7,
-        spin: (rand.nextDouble() - 0.5) * 10,
-        round: rand.nextBool(),
-      );
+      if (i < count * 0.75) {
+        // Upward cannons from left/right lower-mid screen extending high to top
+        final fromLeft = i.isEven;
+        final angle = (fromLeft ? 1.0 : -1.0) *
+            (math.pi / 8 + rand.nextDouble() * math.pi / 3);
+        final speed = 0.85 + rand.nextDouble() * 0.70;
+        return ConfettiParticle(
+          origin: Offset(fromLeft ? 0.05 : 0.95, 0.60),
+          velocity: Offset(math.sin(angle) * speed, -math.cos(angle) * speed),
+          color: _palette[rand.nextInt(_palette.length)],
+          size: 6 + rand.nextDouble() * 7,
+          spin: (rand.nextDouble() - 0.5) * 12,
+          round: rand.nextBool(),
+        );
+      } else {
+        // High top-screen cascade floating down
+        return ConfettiParticle(
+          origin: Offset(
+            0.05 + rand.nextDouble() * 0.90,
+            -0.05 + rand.nextDouble() * 0.35,
+          ),
+          velocity: Offset(
+            (rand.nextDouble() - 0.5) * 0.5,
+            0.15 + rand.nextDouble() * 0.45,
+          ),
+          color: _palette[rand.nextInt(_palette.length)],
+          size: 5 + rand.nextDouble() * 7,
+          spin: (rand.nextDouble() - 0.5) * 10,
+          round: rand.nextBool(),
+        );
+      }
     });
   }
 }
