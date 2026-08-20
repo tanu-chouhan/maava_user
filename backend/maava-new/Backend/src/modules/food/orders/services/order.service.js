@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { FoodOrder, FoodSettings } from '../models/order.model.js';
 // import { paymentSnapshotFromOrder } from './foodOrderPayment.service.js';
 import { logger } from '../../../../utils/logger.js';
+import { runWithVertical, CROSS_VERTICAL } from '../../../../core/vertical/verticalScope.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
@@ -1316,6 +1317,7 @@ export async function recoverStuckOrders() {
   const now = new Date();
   const FIVE_MIN = 5 * 60 * 1000;
   const TWO_MIN = 2 * 60 * 1000;
+  const ONE_DAY = 24 * 60 * 60 * 1000;
 
   try {
     // 1. Stuck in 'assigned' (partner never accepted) for > 2m
@@ -1342,6 +1344,56 @@ export async function recoverStuckOrders() {
       { 'dispatch.dispatchingAt': { $lt: new Date(now - FIVE_MIN) } },
       { $unset: { 'dispatch.dispatchingAt': '' } }
     );
+
+    // 3. Stranded hunts: dispatchable orders that are unassigned and have not
+    // been offered to anyone recently. This happens whenever a dispatch round
+    // found no eligible rider (stale GPS, everyone offline, radius band still
+    // tight) and its retry was lost — BullMQ disabled turns the re-queue into
+    // a no-op, and a process restart drops the in-process fallback timer.
+    // Without this sweep such an order sat "confirmed / looking for rider"
+    // forever while riders came back online none the wiser.
+    //
+    // CROSS_VERTICAL because this runs from startup/watchdog context where the
+    // ambient vertical is the process default — a food-scoped find would leave
+    // every quick order stranded. Each re-dispatch then runs under its own
+    // order's vertical.
+    const staleSince = new Date(now - TWO_MIN);
+    // The await lives INSIDE the callback on purpose: a mongoose Query runs
+    // its vertical-plugin hook at execution, and executing it outside
+    // runWithVertical would silently re-scope it to the process default.
+    const stranded = await runWithVertical(CROSS_VERTICAL, async () =>
+      await FoodOrder.find({
+        'dispatch.status': 'unassigned',
+        'dispatch.dispatchingAt': { $exists: false },
+        orderStatus: { $in: ['confirmed', 'preparing', 'ready_for_pickup', 'ready'] },
+        // Yesterday's abandoned test orders should not suddenly start ringing.
+        createdAt: { $gt: new Date(now - ONE_DAY) },
+        $or: [
+          { 'dispatch.offeredTo': { $exists: false } },
+          { 'dispatch.offeredTo': { $size: 0 } },
+          {
+            'dispatch.offeredTo': {
+              $not: { $elemMatch: { at: { $gt: staleSince } } },
+            },
+          },
+        ],
+      })
+        .select('_id vertical')
+        .sort({ createdAt: 1 })
+        .limit(20)
+        .lean()
+    );
+
+    if (stranded.length > 0) {
+      logger.info(`Watchdog: Re-dispatching ${stranded.length} stranded unassigned order(s).`);
+      for (const order of stranded) {
+        await runWithVertical(order.vertical || 'food', () =>
+          tryAutoAssign(order._id)
+        ).catch((err) =>
+          logger.warn(`Watchdog re-dispatch failed for ${order._id}: ${err.message}`)
+        );
+      }
+    }
 
   } catch (err) {
     logger.error(`Watchdog recovery error: ${err.message}`);

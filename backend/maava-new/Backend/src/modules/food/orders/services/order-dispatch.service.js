@@ -10,6 +10,7 @@ import { logger } from '../../../../utils/logger.js';
 import { config } from '../../../../config/env.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { addOrderJob } from '../../../../queues/producers/order.producer.js';
+import { runWithVertical } from '../../../../core/vertical/verticalScope.js';
 import {
   buildDeliverySocketPayload,
   buildOrderIdentityFilter,
@@ -254,6 +255,48 @@ async function getCashBlockedPartnerIds(partnerIds) {
 function orderCollectsCash(order) {
   const method = String(order?.payment?.method || order?.paymentMethod || '').toLowerCase();
   return method === 'cash' || method === 'razorpay_qr';
+}
+
+/**
+ * Queue the next dispatch round for [orderId], ~[delayMs] from now.
+ *
+ * BullMQ is the preferred carrier, but addOrderJob is a documented no-op when
+ * Redis/BullMQ is disabled — which production runs with. That silently reduced
+ * dispatch to a SINGLE attempt: an order whose first hunt found no eligible
+ * rider (stale GPS, rider mid-reject, radius band still tight) was stranded
+ * as confirmed/unassigned until a human changed its status. The in-process
+ * timer is the fallback — lost on a process restart, which is far better than
+ * lost immediately.
+ *
+ * [vertical] must ride along: the timer fires outside any request scope, where
+ * currentVertical() falls back to the process default ('food'), and the order
+ * lookup inside tryAutoAssign would silently miss a quick order.
+ */
+function scheduleDispatchRetry(orderId, attempt, delayMs, vertical) {
+  return addOrderJob(
+    {
+      action: 'DISPATCH_TIMEOUT_CHECK',
+      orderMongoId: orderId,
+      orderId,
+      attempt,
+    },
+    { delay: delayMs },
+  )
+    .catch(() => null)
+    .then((job) => {
+      if (job) return;
+      const timer = setTimeout(() => {
+        runWithVertical(vertical || config.defaultVertical, () =>
+          tryAutoAssign(orderId, { attempt }),
+        ).catch((err) =>
+          logger.warn(
+            `In-process dispatch retry failed for order ${orderId}: ${err.message}`,
+          ),
+        );
+      }, delayMs);
+      // A pending rider hunt must never keep the process from exiting.
+      timer.unref?.();
+    });
 }
 
 /** Does a rider's chosen service cover this order's vertical? A missing choice
@@ -529,12 +572,12 @@ export async function tryAutoAssign(orderId, options = {}) {
       }
 
       // Re-queue itself to keep trying, aligned to the client countdown.
-      await addOrderJob({
-        action: 'DISPATCH_TIMEOUT_CHECK',
-        orderMongoId: order._id.toString(),
-        orderId: order._id.toString(),
-        attempt: attempt + 1
-      }, { delay: DRIVER_ACCEPT_WINDOW_MS });
+      await scheduleDispatchRetry(
+        order._id.toString(),
+        attempt + 1,
+        DRIVER_ACCEPT_WINDOW_MS,
+        order.vertical,
+      );
 
       return order;
     }
@@ -627,12 +670,12 @@ export async function tryAutoAssign(orderId, options = {}) {
 
     // Re-check when the offer window closes, so the next round starts exactly as the
     // client countdown hits zero.
-    await addOrderJob({
-      action: 'DISPATCH_TIMEOUT_CHECK',
-      orderMongoId: order._id.toString(),
-      orderId: order._id.toString(),
-      attempt: attempt + 1
-    }, { delay: DRIVER_ACCEPT_WINDOW_MS });
+    await scheduleDispatchRetry(
+      order._id.toString(),
+      attempt + 1,
+      DRIVER_ACCEPT_WINDOW_MS,
+      order.vertical,
+    );
 
     return order;
   } finally {
