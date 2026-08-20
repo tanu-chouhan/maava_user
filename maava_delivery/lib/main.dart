@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:maava_delivery/core/router/app_router.dart';
 import 'package:maava_delivery/core/services/fcm_service.dart';
-import 'package:maava_delivery/core/services/order_overlay_service.dart';
+import 'package:maava_delivery/core/services/location_service.dart';
+import 'package:maava_delivery/core/services/new_order_overlay_bridge.dart';
 import 'package:maava_delivery/core/services/referral_tracking_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:maava_delivery/core/theme/app_theme.dart';
 import 'package:maava_delivery/core/theme/theme_mode_provider.dart';
 import 'package:maava_delivery/features/orders/application/active_trip_visibility_controller.dart';
@@ -28,14 +30,8 @@ void main() async {
   runApp(const ProviderScope(child: FoodDeliveryApp()));
 }
 
-/// Entry point for the overlay bubble's separate Flutter engine — must stay
-/// top-level in this file with this exact name/pragma, since the native
-/// `OverlayService` resolves "overlayMain" from the app's default
-/// entrypoint library (main.dart), not by scanning every file.
-@pragma('vm:entry-point')
-void overlayMain() {
-  runApp(const OrderBubbleApp());
-}
+/// Bumped only if a future release needs to re-ask everyone.
+const _permissionsAskedKey = 'permissions_requested_v1';
 
 class FoodDeliveryApp extends ConsumerStatefulWidget {
   const FoodDeliveryApp({super.key});
@@ -50,10 +46,11 @@ class _FoodDeliveryAppState extends ConsumerState<FoodDeliveryApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    Future.microtask(() {
+    Future.microtask(() async {
       ref.read(fcmServiceProvider).initialize();
       ReferralTrackingService.initialize();
-      _consumePendingOverlayOrder();
+      await _requestFirstLaunchPermissions();
+      _consumeOverlayHandoff();
     });
   }
 
@@ -66,7 +63,9 @@ class _FoodDeliveryAppState extends ConsumerState<FoodDeliveryApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _consumePendingOverlayOrder();
+      // Tapping the overlay resumes an already-running app rather than starting
+      // it, so the handoff has to be picked up here as well as at launch.
+      _consumeOverlayHandoff();
       // Re-checks full-screen-intent / overlay permissions on every resume,
       // not just cold start — catches a rider who dismissed the Settings
       // prompt the first time or toggled it manually while the app was
@@ -86,22 +85,38 @@ class _FoodDeliveryAppState extends ConsumerState<FoodDeliveryApp>
     }
   }
 
-  /// Surfaces an order that arrived as a home-screen bubble (app was
-  /// backgrounded) into the same in-app IncomingOrderScreen shown for the
-  /// foreground/socket path, and dismisses the bubble now that the app is
-  /// in front.
-  Future<void> _consumePendingOverlayOrder() async {
-    await OrderOverlayService.close();
-    final data = await OrderOverlayService.consumePendingOrder();
-    if (data == null || !mounted) return;
-    
-    final order = DeliveryOrder.fromRealtimePayload(data);
-    final incomingController = ref.read(incomingOrderControllerProvider.notifier);
-    
-    incomingController.show(order);
-    if (data['autoAccept'] == true) {
-      incomingController.accept();
+  /// Asks for everything the app needs, once, on the first launch after install.
+  ///
+  /// The flag is written BEFORE the prompts rather than after: if the rider
+  /// dismisses one and the app is killed, this must not re-prompt on every
+  /// launch forever. Anything still missing is surfaced by the readiness
+  /// screen, which is the place built for it.
+  Future<void> _requestFirstLaunchPermissions() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_permissionsAskedKey) == true) return;
+    await prefs.setBool(_permissionsAskedKey, true);
+
+    // Runtime dialogs first — they are quick and can be answered in place.
+    await ref.read(fcmServiceProvider).ensureAndroidAlertPermissions();
+    await ref.read(locationServiceProvider).ensurePermissions();
+
+    // "Display over other apps" last, deliberately: it cannot be granted by a
+    // dialog, so it throws the rider out to a Settings screen. Doing it after
+    // the in-place prompts means they answer everything else first.
+    if (!await NewOrderOverlayBridge.hasPermission()) {
+      await NewOrderOverlayBridge.requestPermission();
     }
+  }
+
+  /// Picks up whatever the native overlay left for us: the order the partner
+  /// tapped, and any they rejected while the app was not running.
+  Future<void> _consumeOverlayHandoff() async {
+    final controller = ref.read(incomingOrderControllerProvider.notifier);
+    unawaited(controller.flushOverlayRejections());
+
+    final handoff = await NewOrderOverlayBridge.consumeLaunchOrder();
+    if (handoff == null || !mounted) return;
+    await controller.showById(handoff.orderId, autoAccept: handoff.autoAccept);
   }
 
   @override

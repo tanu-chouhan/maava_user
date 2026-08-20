@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../presentation/branding/app_colors.dart';
 import '../../../../core/constants/app_durations.dart';
 import '../../../../core/utils/app_haptics.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/theme/app_theme.dart';
 
-/// − qty + control. The quantity itself animates so a change is felt, not just
-/// seen.
+/// − qty + control styled to match Food section's stepper pill design.
 class QuantityStepper extends StatelessWidget {
   const QuantityStepper({
     super.key,
     required this.quantity,
     required this.onIncrement,
     required this.onDecrement,
-    this.height = 36,
+    this.height = 34,
     this.compact = false,
     this.canIncrement = true,
   });
@@ -27,25 +25,52 @@ class QuantityStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = context.colors.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final stepperBg = isDark
+        ? const Color(0xFF2A2A2A)
+        : AppColors.primaryTint;
+    final stepperBorder = isDark
+        ? const Color(0xFF3D3D3D)
+        : AppColors.primary.withValues(alpha: 0.3);
+    final stepperTextColor = isDark ? Colors.white : AppColors.primary;
 
     return Container(
       height: height,
-      decoration: BoxDecoration(color: primary, borderRadius: AppRadii.rSm),
+      decoration: BoxDecoration(
+        color: stepperBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: stepperBorder, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _StepButton(
-            icon: Icons.remove_rounded,
-            // Every quantity change routes through this shared control, so one
-            // light cue here covers cards, the cart and the product page —
-            // without ever double-firing.
+          InkWell(
+            borderRadius: const BorderRadius.horizontal(left: Radius.circular(18)),
             onTap: () {
               AppHaptics.light();
               onDecrement();
             },
-            compact: compact,
-            semanticLabel: 'Decrease quantity',
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 8 : 10,
+                vertical: 2,
+              ),
+              child: Text(
+                '−',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: stepperTextColor,
+                ),
+              ),
+            ),
           ),
           AnimatedSwitcher(
             duration: AppDurations.fast,
@@ -53,60 +78,45 @@ class QuantityStepper extends StatelessWidget {
               scale: animation,
               child: FadeTransition(opacity: animation, child: child),
             ),
-            child: Text(
-              '$quantity',
-              key: ValueKey(quantity),
-              style: context.text.labelLarge!
-                  .copyWith(color: context.colors.onPrimary),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                '$quantity',
+                key: ValueKey(quantity),
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: stepperTextColor,
+                ),
+              ),
             ),
           ),
-          _StepButton(
-            icon: Icons.add_rounded,
+          InkWell(
+            borderRadius: const BorderRadius.horizontal(right: Radius.circular(18)),
             onTap: canIncrement
                 ? () {
                     AppHaptics.light();
                     onIncrement();
                   }
                 : null,
-            compact: compact,
-            semanticLabel: 'Increase quantity',
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 8 : 10,
+                vertical: 2,
+              ),
+              child: Text(
+                '+',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: canIncrement
+                      ? stepperTextColor
+                      : stepperTextColor.withValues(alpha: 0.4),
+                ),
+              ),
+            ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StepButton extends StatelessWidget {
-  const _StepButton({
-    required this.icon,
-    required this.onTap,
-    required this.compact,
-    required this.semanticLabel,
-  });
-
-  final IconData icon;
-  final VoidCallback? onTap;
-  final bool compact;
-  final String semanticLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadii.rSm,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 11),
-          child: Icon(
-            icon,
-            size: compact ? 15 : 17,
-            color: context.colors.onPrimary
-                .withValues(alpha: onTap == null ? 0.4 : 1),
-          ),
-        ),
       ),
     );
   }

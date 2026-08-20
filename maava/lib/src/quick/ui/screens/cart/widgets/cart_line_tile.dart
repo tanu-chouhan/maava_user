@@ -43,7 +43,7 @@ class CartLineTile extends StatelessWidget {
         padding: const EdgeInsets.only(right: AppSpacing.xl),
         decoration: BoxDecoration(
           color: context.semantic.dangerSoft,
-          borderRadius: AppRadii.rLg,
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Icon(
           Icons.delete_outline_rounded,

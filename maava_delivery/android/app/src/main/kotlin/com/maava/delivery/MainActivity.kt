@@ -18,6 +18,7 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "app.fooddelivery/unlock"
     private val ONLINE_CHANNEL = "app.fooddelivery/rider_online"
     private val READINESS_CHANNEL = "app.fooddelivery/device_readiness"
+    private val OVERLAY_CHANNEL = "app.fooddelivery/new_order_overlay"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -54,6 +55,59 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, OVERLAY_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    // Whatever order the overlay handed us, consumed exactly
+                    // once. Cleared on read so a configuration change or a
+                    // second resume cannot re-raise an order already answered.
+                    "consumeLaunchOrder" -> {
+                        val orderId = intent?.getStringExtra(NewOrderOverlay.EXTRA_ORDER_ID)
+                        if (orderId.isNullOrBlank()) {
+                            result.success(null)
+                        } else {
+                            val autoAccept =
+                                intent.getBooleanExtra(NewOrderOverlay.EXTRA_AUTO_ACCEPT, false)
+                            intent.removeExtra(NewOrderOverlay.EXTRA_ORDER_ID)
+                            intent.removeExtra(NewOrderOverlay.EXTRA_AUTO_ACCEPT)
+                            result.success(
+                                mapOf("orderId" to orderId, "autoAccept" to autoAccept)
+                            )
+                        }
+                    }
+                    // Rejections tapped on the overlay. That process cannot read
+                    // the encrypted auth token, so it queues the id and the app
+                    // reports it the moment it next runs.
+                    "takePendingRejections" -> {
+                        val prefs = getSharedPreferences(
+                            NewOrderOverlay.REJECT_PREFS, Context.MODE_PRIVATE
+                        )
+                        val queued = prefs.getStringSet(NewOrderOverlay.REJECT_KEY, emptySet())
+                        prefs.edit().remove(NewOrderOverlay.REJECT_KEY).apply()
+                        result.success(queued?.toList() ?: emptyList<String>())
+                    }
+                    "hasOverlayPermission" ->
+                        result.success(NewOrderOverlay.canDrawOverlay(this))
+                    "requestOverlayPermission" -> {
+                        result.success(
+                            startActivitySafely(
+                                Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:$packageName"),
+                                )
+                            )
+                        )
+                    }
+                    // The in-app card is showing, or the order is gone — either
+                    // way the floating copy must not outlive it.
+                    "dismissOverlay" -> {
+                        NewOrderOverlay.dismiss()
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ONLINE_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -79,6 +133,30 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AppForeground.isForeground = true
+        // The app is in front, so the in-app alert owns the screen — no
+        // floating card, and above all no native ringtone, may outlive that.
+        // Unconditional on purpose: it is the one call guaranteed to run
+        // whichever way the app came to the foreground.
+        NewOrderOverlay.dismiss()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        AppForeground.isForeground = false
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // launchMode is singleTop, so tapping the overlay while the app is
+        // already running delivers here instead of through onCreate. Without
+        // this the activity would keep serving the intent it started with and
+        // the newly tapped order would never be seen.
+        setIntent(intent)
     }
 
     /**

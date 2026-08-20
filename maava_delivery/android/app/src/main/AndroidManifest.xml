@@ -6,7 +6,6 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <!--
@@ -24,6 +23,12 @@
         android:label="MAAVA Delivery"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="high_importance_channel" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/launcher_icon" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -70,13 +75,18 @@
             android:stopWithTask="false"
             android:foregroundServiceType="location" />
 
+        <!--
+            Supersedes the firebase_messaging plugin's own service. It extends
+            that service and always calls through to it, so every existing Dart
+            handler still runs; this only adds a native path that can draw the
+            order card without starting a Flutter engine first.
+        -->
         <service
-            android:name="flutter.overlay.window.flutter_overlay_window.OverlayService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Floating incoming-order bubble shown while backgrounded, like Uber/Rapido" />
+            android:name=".MaavaMessagingService"
+            android:exported="false">
+            <intent-filter android:priority="1">
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
         </service>
     </application>
     <!-- Required to query activities that can process text, see:

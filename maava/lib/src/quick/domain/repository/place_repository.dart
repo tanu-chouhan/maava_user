@@ -19,4 +19,9 @@ abstract interface class PlaceRepository {
     required double latitude,
     required double longitude,
   });
+
+  /// Turns a typed postal address into coordinates — the manual-entry
+  /// counterpart of [reverseGeocode], for users who fill the form without
+  /// touching the map or GPS.
+  Future<ResolvedPlace?> geocodeAddress(String address);
 }

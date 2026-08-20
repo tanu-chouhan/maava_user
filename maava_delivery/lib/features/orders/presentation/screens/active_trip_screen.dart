@@ -951,7 +951,9 @@ class _ActiveTripScaffoldState extends ConsumerState<_ActiveTripScaffold> {
                         borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Text(
-                        isPickupPhase ? 'Pick up' : 'Drop',
+                        isPickupPhase
+                            ? 'Pick up${order.serviceLabel != null ? ' · ${order.serviceLabel}' : ''}'
+                            : 'Drop',
                         style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.w800, fontSize: 10.sp),
                       ),
                     ),

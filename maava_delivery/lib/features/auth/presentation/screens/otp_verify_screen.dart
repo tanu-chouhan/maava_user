@@ -22,10 +22,10 @@ class OtpVerifyScreen extends ConsumerStatefulWidget {
 }
 
 class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
-  static const _otpLength = 4;
+  static const _otpLength = 6;
   late final List<TextEditingController> _controllers = List.generate(
     _otpLength,
-    (index) => TextEditingController(text: '${index + 1}'),
+    (_) => TextEditingController(),
   );
   late final List<FocusNode> _focusNodes = List.generate(
     _otpLength,
@@ -176,10 +176,10 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(_otpLength, (index) {
                   return Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w),
+                    padding: EdgeInsets.symmetric(horizontal: 3.w),
                     child: SizedBox(
-                      width: 56.w,
-                      height: 64.h,
+                      width: 44.w,
+                      height: 56.h,
                       child: TextField(
                         controller: _controllers[index],
                         focusNode: _focusNodes[index],
@@ -187,7 +187,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                         keyboardType: TextInputType.number,
                         maxLength: 1,
                         style: TextStyle(
-                          fontSize: 24.sp,
+                          fontSize: 22.sp,
                           fontWeight: FontWeight.bold,
                         ),
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],

@@ -444,6 +444,8 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
     orderMongoId:
       orderDoc?._id?.toString?.() || order?._id?.toString?.() || order?._id,
     orderId: order?.order_id || order?._id?.toString?.(),
+    // 'food' | 'quick' — lets the rider app label the job Food vs Mart.
+    vertical: order?.vertical,
     status: orderDoc?.orderStatus || order?.orderStatus,
     items: order?.items || [],
     pricing: order?.pricing,

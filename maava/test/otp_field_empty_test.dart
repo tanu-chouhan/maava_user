@@ -29,9 +29,9 @@ void main() {
     await tester.pump();
 
     final fields = find.byType(TextField);
-    expect(fields, findsNWidgets(4));
+    expect(fields, findsNWidgets(6));
 
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < 6; i++) {
       final controller = tester.widget<TextField>(fields.at(i)).controller;
       expect(controller?.text, isEmpty, reason: 'box $i must start empty');
     }
@@ -54,17 +54,17 @@ void main() {
     final fields = find.byType(TextField);
     // Autofill and paste both deliver the whole code into one box — here the
     // first — rather than one keystroke per box.
-    // Three digits on purpose: a complete code auto-submits, and the failed
+    // One short of a full code on purpose: a complete code auto-submits, and the failed
     // verification (no backend under test) clears the boxes before we can look
     // at them. Ordering and one-digit-per-box are what this asserts.
-    await tester.enterText(fields.first, '144');
+    await tester.enterText(fields.first, '14463');
     await tester.pump();
 
     String boxText(int i) =>
         tester.widget<TextField>(fields.at(i)).controller!.text;
 
-    expect([boxText(0), boxText(1), boxText(2), boxText(3)],
-        ['1', '4', '4', ''],
+    expect([for (var i = 0; i < 6; i++) boxText(i)],
+        ['1', '4', '4', '6', '3', ''],
         reason: 'repeated digits are where an off-by-one would surface, and '
             'the unfilled box must stay empty rather than duplicate one');
   });

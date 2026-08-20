@@ -53,4 +53,11 @@ dependencies {
     // guaranteed to be on THIS module's compile classpath — declaring it means the
     // app does not silently stop compiling when a plugin changes its dependencies.
     implementation("androidx.core:core-ktx:1.13.1")
+
+    // MaavaMessagingService subclasses the firebase_messaging plugin's service
+    // so a new order can be drawn natively. The plugin pulls firebase-messaging
+    // onto its own classpath only — RemoteMessage does not compile in this
+    // module without an explicit dependency.
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
 }

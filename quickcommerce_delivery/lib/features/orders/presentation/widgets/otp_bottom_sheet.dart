@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/services/haptic_service.dart';
-import 'package:food_user_application/core/theme/app_colors.dart';
 
 Future<String?> showOtpBottomSheet(BuildContext context, {required String customerName}) {
   return showDialog<String>(
@@ -38,7 +37,7 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
 
   void _onTextChanged() {
     final text = _controller.text;
-    if (text.length == 4) {
+    if (text.length == 6) {
       HapticService.medium();
       Navigator.of(context).pop(text);
     } else {
@@ -79,7 +78,7 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                   color: Color(0xFFE8F5E9),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.lock_outline_rounded, color: AppColors.online, size: 20.sp),
+                child: Icon(Icons.lock_outline_rounded, color: const Color(0xFF1EBE5D), size: 20.sp),
               ),
               SizedBox(width: 10.w),
               Expanded(
@@ -91,7 +90,7 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                       style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.sp, color: Colors.black87),
                     ),
                     Text(
-                      'Ask ${widget.customerName.isNotEmpty ? widget.customerName : "customer"} for 4-digit code',
+                      'Ask ${widget.customerName.isNotEmpty ? widget.customerName : "customer"} for 6-digit code',
                       style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
                     ),
                   ],
@@ -121,7 +120,7 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                   controller: _controller,
                   focusNode: _focusNode,
                   keyboardType: TextInputType.number,
-                  maxLength: 4,
+                  maxLength: 6,
                   autofocus: true,
                   decoration: const InputDecoration(counterText: ''),
                 ),
@@ -132,27 +131,27 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                 behavior: HitTestBehavior.opaque,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(4, (index) {
+                  children: List.generate(6, (index) {
                     final char = index < text.length ? text[index] : '';
-                    final isFocused = index == text.length || (index == 3 && text.length == 4);
+                    final isFocused = index == text.length || (index == 5 && text.length == 6);
 
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      width: 54.w,
-                      height: 58.h,
+                      width: 42.w,
+                      height: 52.h,
                       decoration: BoxDecoration(
                         color: char.isNotEmpty ? const Color(0xFFF0FDF4) : Colors.grey[50],
-                        borderRadius: BorderRadius.circular(16.r),
+                        borderRadius: BorderRadius.circular(14.r),
                         border: Border.all(
                           color: isFocused
-                              ? AppColors.online
+                              ? const Color(0xFF1EBE5D)
                               : (char.isNotEmpty ? const Color(0xFF86EFAC) : Colors.grey[300]!),
                           width: isFocused ? 2.0 : 1.0,
                         ),
                         boxShadow: isFocused
                             ? [
                                 BoxShadow(
-                                  color: AppColors.online.withValues(alpha: 0.2),
+                                  color: const Color(0xFF1EBE5D).withValues(alpha: 0.2),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 )
@@ -163,9 +162,9 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                       child: Text(
                         char,
                         style: TextStyle(
-                          fontSize: 24.sp,
+                          fontSize: 22.sp,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.lightTextPrimary,
+                          color: const Color(0xFF1E1E1E),
                         ),
                       ),
                     );

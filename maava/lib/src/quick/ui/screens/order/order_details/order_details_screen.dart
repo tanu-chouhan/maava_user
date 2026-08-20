@@ -374,7 +374,7 @@ class _Section extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: context.colors.surface,
-        borderRadius: AppRadii.rLg,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: context.semantic.border),
       ),
       child: Column(

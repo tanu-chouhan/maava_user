@@ -24,6 +24,9 @@ class _FakePlaces implements PlaceRepository {
 
   @override
   Future<ResolvedPlace?> details(String placeId) async => null;
+
+  @override
+  Future<ResolvedPlace?> geocodeAddress(String address) async => place;
 }
 
 class _GrantedPermissions implements PermissionService {

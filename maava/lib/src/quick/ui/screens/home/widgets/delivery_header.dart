@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../di/app_providers.dart';
 import '../../../../navigation/route_paths.dart';
+import '../../../../../presentation/auth/viewmodels/auth_viewmodel.dart';
 import '../../notifications/notifications_provider.dart';
 
 /// Mart's top bar.
@@ -25,6 +26,9 @@ class DeliveryHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final address = ref.watch(selectedAddressProvider);
     final unread = ref.watch(notificationsProvider.select((s) => s.unreadCount));
+    // Same identity as Food: one account, one avatar. Mart was rendering a
+    // static person glyph, so a signed-in customer never saw their own photo.
+    final avatarUrl = ref.watch(authViewModelProvider).value?.avatarUrl ?? '';
 
     final String line;
     if (address != null && address.shortLine.trim().isNotEmpty) {
@@ -110,6 +114,7 @@ class DeliveryHeader extends ConsumerWidget {
           const SizedBox(width: 8),
           _CircleAction(
             icon: Icons.person_outline_rounded,
+            imageUrl: avatarUrl,
             onTap: () => context.push(RoutePaths.profile),
           ),
         ],
@@ -124,11 +129,17 @@ class _CircleAction extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.badge = 0,
+    this.imageUrl = '',
   });
 
   final IconData icon;
   final VoidCallback onTap;
   final int badge;
+
+  /// Profile photo. Empty for signed-out users, or when the account has none —
+  /// both fall back to the same bundled avatar Food uses, then to [icon] if
+  /// even that fails to decode.
+  final String imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +156,22 @@ class _CircleAction extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-            child: Icon(icon, size: 21, color: context.colors.onSurface),
+            clipBehavior: imageUrl.isEmpty ? Clip.none : Clip.antiAlias,
+            child: imageUrl.isEmpty
+                ? Icon(icon, size: 21, color: context.colors.onSurface)
+                : Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) => Image.asset(
+                      'assets/images/user_avatar_3d.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) => Icon(
+                        icon,
+                        size: 21,
+                        color: context.colors.onSurface,
+                      ),
+                    ),
+                  ),
           ),
           if (badge > 0)
             Positioned(

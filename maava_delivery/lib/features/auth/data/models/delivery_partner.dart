@@ -33,6 +33,7 @@ class DeliveryPartner {
     this.referralCount,
     this.rating,
     this.totalRatings,
+    this.serviceType = 'both',
   });
 
   final String id;
@@ -68,6 +69,15 @@ class DeliveryPartner {
   final int? referralCount;
   final double? rating;
   final int? totalRatings;
+
+  /// Which vertical(s) this rider serves: 'food' | 'quick' | 'both'.
+  final String serviceType;
+
+  String get serviceTypeLabel => switch (serviceType) {
+        'food' => 'Restaurant Delivery',
+        'quick' => 'Mart Delivery',
+        _ => 'Restaurant & Mart Delivery',
+      };
 
   bool get isApproved => status == 'approved';
   bool get isRejected => status == 'rejected';
@@ -110,6 +120,7 @@ class DeliveryPartner {
       referralCount: (json['referralCount'] as num?)?.toInt(),
       rating: (json['rating'] as num?)?.toDouble(),
       totalRatings: (json['totalRatings'] as num?)?.toInt(),
+      serviceType: json['serviceType'] as String? ?? 'both',
     );
   }
 
@@ -148,6 +159,7 @@ class DeliveryPartner {
       referralCount: referralCount,
       rating: rating,
       totalRatings: totalRatings,
+      serviceType: serviceType,
     );
   }
 }

@@ -295,6 +295,7 @@ class DeliveryOrder {
     this.tripDistanceKm,
     this.tripDurationMins,
     this.acceptanceDeadlineAt,
+    this.vertical,
   });
 
   final String id;
@@ -320,6 +321,19 @@ class DeliveryOrder {
   final double? tripDistanceKm;
   final double? tripDurationMins;
   final DateTime? acceptanceDeadlineAt;
+
+  /// Which vertical the order belongs to: 'food' | 'quick'. Null on payloads
+  /// from a backend that predates the field.
+  final String? vertical;
+
+  bool get isMartOrder => vertical == 'quick';
+
+  /// Rider-facing order-type label, null when the wire didn't say.
+  String? get serviceLabel => switch (vertical) {
+        'quick' => 'Mart',
+        'food' => 'Food',
+        _ => null,
+      };
 
   bool get isCashOnDelivery => paymentMethod == 'cash';
   bool get isPaid => paymentStatus == 'paid';
@@ -401,6 +415,7 @@ class DeliveryOrder {
       tripDistanceKm: tripDistanceKm,
       tripDurationMins: tripDurationMins,
       acceptanceDeadlineAt: acceptanceDeadlineAt,
+      vertical: vertical,
     );
   }
 
@@ -481,6 +496,7 @@ class DeliveryOrder {
       acceptanceDeadlineAt: json['acceptanceDeadlineAt'] != null
           ? DateTime.tryParse(json['acceptanceDeadlineAt'] as String)
           : null,
+      vertical: json['vertical'] as String?,
     );
   }
 
@@ -551,6 +567,9 @@ class DeliveryOrder {
       tripDurationMins: nNullable(data['tripDurationMins']),
       acceptanceDeadlineAt: data['acceptanceDeadlineAt'] != null
           ? DateTime.tryParse(data['acceptanceDeadlineAt'].toString())
+          : null,
+      vertical: (data['vertical']?.toString().isNotEmpty ?? false)
+          ? data['vertical'].toString()
           : null,
     );
   }

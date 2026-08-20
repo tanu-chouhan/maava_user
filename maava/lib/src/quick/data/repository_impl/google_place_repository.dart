@@ -125,6 +125,24 @@ class GooglePlaceRepository implements PlaceRepository {
     return _toPlace(results.first, fallbackLat: latitude, fallbackLng: longitude);
   }
 
+  @override
+  Future<ResolvedPlace?> geocodeAddress(String address) async {
+    final query = address.trim();
+    if (!_hasKey || query.isEmpty) return null;
+
+    final json = await _get('/geocode/json', {
+      'address': query,
+      'components': 'country:IN',
+      'key': _config.mapsApiKey,
+    });
+    if (json == null) return null;
+
+    final results = json.objects('results');
+    if (results.isEmpty) return null;
+
+    return _toPlace(results.first);
+  }
+
   Future<Map<String, dynamic>?> _get(
     String path,
     Map<String, dynamic> query,

@@ -122,7 +122,9 @@ class OrderDetailScreen extends ConsumerWidget {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          order != null ? 'Order #${order.orderCode}' : 'Order Details',
+          order != null
+              ? '${order.serviceLabel != null ? '${order.serviceLabel} ' : ''}Order #${order.orderCode}'
+              : 'Order Details',
           style: TextStyle(color: textColor, fontWeight: FontWeight.w800, fontSize: 16.sp),
         ),
       ),

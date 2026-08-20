@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -13,18 +14,59 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/app_constants.dart';
 import '../network/api_endpoints.dart';
 import '../network/dio_client.dart';
+import '../theme/app_theme.dart';
 import '../storage/token_storage.dart';
-import 'order_overlay_service.dart';
+import 'socket_service.dart' show offerLog;
 
-/// Dedicated channel for incoming-order alerts — separate from
-/// [FcmService._channel] because it needs call-category / full-screen-intent
-/// semantics that a plain order-status-update notification shouldn't have.
-const _incomingOrdersChannel = AndroidNotificationChannel(
-  'incoming_orders_channel_v3',
-  'Incoming Orders',
-  description: 'Full-screen incoming order alerts that require immediate action',
-  importance: Importance.max,
+/// The channel every new-order alert this app posts goes out on.
+///
+/// A fresh id, deliberately. Android freezes a channel's importance, sound and
+/// vibration at creation and ignores every later edit under the same id, so a
+/// device that already holds the old channel would keep whatever it was first
+/// created with. A new id is the only way a sound/importance change reaches an
+/// existing install without a reinstall.
+const _newOrdersChannelId = 'new_orders_v2';
+
+/// The dedicated new-order ringtone, `android/app/src/main/res/raw/neworder.mp3`
+/// — the same file the in-app alert plays. Named without the extension, as
+/// Android requires.
+///
+/// Only this channel uses it. Order status updates and everything else stay on
+/// [FcmService._channel] / [_highImportanceChannel] with the device's normal
+/// notification sound.
+const _newOrderSound = RawResourceAndroidNotificationSound('neworder');
+
+const _newOrdersChannel = AndroidNotificationChannel(
+  _newOrdersChannelId,
+  'New Orders',
+  description: 'Incoming order offers that require immediate action',
+  importance: Importance.high,
   playSound: true,
+  sound: _newOrderSound,
+  // Alarm usage, so the alert is still audible with media volume down — the
+  // normal state for someone riding with the phone mounted.
+  audioAttributesUsage: AudioAttributesUsage.alarm,
+  enableVibration: true,
+);
+
+/// Still created, even though nothing in this app posts to it any more.
+///
+/// `order-dispatch.service.js` sends its own tray copy with
+/// `androidChannelId: 'incoming_orders_channel_v3'`, and that copy is the only
+/// alert a partner gets on ROMs where the background handler never runs.
+/// Android silently demotes a notification whose channel does not exist to a
+/// low-importance fallback — no heads-up, no sound — so deleting this would
+/// switch off the one path that works when ours doesn't. Retire it once the
+/// backend literal is moved to [_newOrdersChannelId].
+const _legacyServerChannel = AndroidNotificationChannel(
+  'incoming_orders_channel_v3',
+  'New Orders (server)',
+  description: 'Incoming order offers delivered directly by the server',
+  importance: Importance.high,
+  playSound: true,
+  sound: _newOrderSound,
+  audioAttributesUsage: AudioAttributesUsage.alarm,
+  enableVibration: true,
 );
 
 /// Stable notification id for an order's incoming alert.
@@ -47,14 +89,21 @@ String? _orderIdOf(Map<String, dynamic> data) {
 /// rider whose app is closed is the one the socket `order_claimed` event cannot
 /// reach, so this is the only path that clears their screen.
 Future<void> dismissIncomingOrderAlert(String orderId) async {
-  await OrderOverlayService.closeForOrder(orderId);
   final localNotifications = FlutterLocalNotificationsPlugin();
-  await localNotifications.initialize(
-    const InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/launcher_icon'),
-    ),
-    onDidReceiveBackgroundNotificationResponse: backgroundNotificationResponseHandler,
-  );
+  if (Platform.isAndroid) {
+    // The background isolate holds its own plugin instance with nothing
+    // registered, and this is what lets `cancel` below reach the notification
+    // manager there. Android-only settings — running it on iOS would replace
+    // the Darwin configuration FcmService.initialize() installed, and the main
+    // isolate's instance is already initialized anyway.
+    await localNotifications.initialize(
+      const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/launcher_icon'),
+      ),
+      onDidReceiveBackgroundNotificationResponse:
+          backgroundNotificationResponseHandler,
+    );
+  }
   await localNotifications.cancel(incomingOrderNotificationId(orderId));
   await cancelFcmTrayCopy(orderId);
 }
@@ -103,12 +152,11 @@ Future<void> _respondToOrderFromBackground({
       );
     }
   } catch (e) {
-    print('[FCM Background Action] Error responding to order $orderId: $e');
+    debugPrint('[FCM Background Action] Error responding to order $orderId: $e');
   } finally {
     try {
-      final localNotifications = FlutterLocalNotificationsPlugin();
-      await localNotifications.cancel(incomingOrderNotificationId(orderId));
-      await OrderOverlayService.closeForOrder(orderId);
+      await FlutterLocalNotificationsPlugin()
+          .cancel(incomingOrderNotificationId(orderId));
     } catch (_) {}
   }
 }
@@ -128,13 +176,150 @@ Future<void> cancelFcmTrayCopy(String orderId) async {
   }
 }
 
+/// Every field the alert needs, read straight off the push.
+///
+/// This is the whole fix for "the order details have not arrived yet". The
+/// payload is already in this isolate's hands the moment the handler runs —
+/// it was previously written to SharedPreferences and re-read from a second
+/// isolate (the overlay engine), and that handoff arrived empty every time:
+/// `key empty after 30 reads, 0 direct messages`. Nothing here crosses an
+/// isolate boundary any more.
+class NewOrderPush {
+  const NewOrderPush._({
+    required this.orderId,
+    required this.displayId,
+    required this.earning,
+    required this.data,
+  });
+
+  /// The Mongo id — what every API call keys on. Never empty.
+  final String orderId;
+
+  /// The readable code the partner sees ("AZ10567"). The push puts the Mongo
+  /// id in `orderId` and the readable code in `orderDisplayId`.
+  final String displayId;
+  final String earning;
+  final Map<String, dynamic> data;
+
+  static String _str(Map<String, dynamic> d, List<String> keys) {
+    for (final key in keys) {
+      final value = d[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  /// Returns null when the push carries no usable order id — without one there
+  /// is nothing to accept, fetch or de-duplicate, so posting an alert would
+  /// strand the partner on a notification that can't lead anywhere.
+  static NewOrderPush? parse(Map<String, dynamic> data) {
+    final orderId = _str(data, ['orderMongoId', '_id', 'orderId']);
+    if (orderId.isEmpty) return null;
+    return NewOrderPush._(
+      orderId: orderId,
+      displayId: _str(data, ['orderDisplayId', 'orderNumber']),
+      earning: _str(data, ['riderEarning', 'earnings', 'price']),
+      data: data,
+    );
+  }
+
+  /// What the partner reads on the notification.
+  String get reference => displayId.isNotEmpty
+      ? displayId
+      : (orderId.length > 6
+          ? '#${orderId.substring(orderId.length - 6).toUpperCase()}'
+          : orderId);
+
+  String get storeName => _str(data, ['restaurantName', 'storeName']);
+  String get orderValue => _str(data, ['total', 'orderValue']);
+  String get itemCount => _str(data, ['itemsCount', 'itemCount', 'totalItems']);
+
+  String get notificationBody {
+    final headline = [
+      'Order $reference',
+      if (earning.isNotEmpty) '₹$earning earning',
+    ].join(' • ');
+    final detail = [
+      if (storeName.isNotEmpty) storeName,
+      if (itemCount.isNotEmpty) '$itemCount items',
+      if (orderValue.isNotEmpty) '₹$orderValue order',
+    ].join(' · ');
+    return [
+      headline,
+      'Tap to view and accept the order.',
+      if (detail.isNotEmpty) detail,
+    ].join('\n');
+  }
+}
+
+/// Posts the incoming-order notification from [push].
+///
+/// Shared by the background isolate and the foreground path so both produce an
+/// identical alert, on one channel, under one id.
+Future<void> showNewOrderNotification(
+  FlutterLocalNotificationsPlugin plugin,
+  NewOrderPush push,
+) async {
+  debugPrint('[NEW_ORDER_NOTIFICATION] creating notification');
+  debugPrint('[NEW_ORDER_NOTIFICATION] orderId = ${push.orderId}');
+  debugPrint('[NEW_ORDER_NOTIFICATION] channel = $_newOrdersChannelId');
+  debugPrint('[NEW_ORDER_NOTIFICATION] importance = HIGH');
+
+  final body = push.notificationBody;
+  await plugin.show(
+    // Keyed on the order, so the same order arriving twice REPLACES its own
+    // notification instead of stacking a second one.
+    incomingOrderNotificationId(push.orderId),
+    '🔔 New Order Received!',
+    body,
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        _newOrdersChannel.id,
+        _newOrdersChannel.name,
+        channelDescription: _newOrdersChannel.description,
+        importance: Importance.high,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.call,
+        fullScreenIntent: true,
+        playSound: true,
+        sound: _newOrderSound,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
+        enableVibration: true,
+        color: AppTheme.primaryColor,
+        ticker: 'New order available',
+        styleInformation: BigTextStyleInformation(body),
+        actions: const <AndroidNotificationAction>[
+          AndroidNotificationAction('accept', 'Accept',
+              showsUserInterface: true, cancelNotification: true),
+          AndroidNotificationAction('reject', 'Reject',
+              showsUserInterface: true, cancelNotification: true),
+        ],
+      ),
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentSound: true,
+        interruptionLevel: InterruptionLevel.timeSensitive,
+      ),
+    ),
+    // The full payload rides along, so the tap handler has the order id
+    // without needing any stored copy.
+    payload: jsonEncode(push.data),
+  );
+}
+
 /// Must stay top-level / static so the Dart VM can invoke it in the
 /// background isolate when a push arrives while the app is killed.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 
-  // Another rider accepted first — pull the alert down instead of leaving it
+  debugPrint('[FCM] MESSAGE RECEIVED');
+  debugPrint('[FCM] messageId = ${message.messageId}');
+  debugPrint('[FCM] notification = ${message.notification?.title} / '
+      '${message.notification?.body}');
+  debugPrint('[FCM] data = ${message.data}');
+
+  // Another partner accepted first — pull the alert down instead of leaving it
   // ringing until its own countdown expires.
   if (message.data['type'] == 'order_taken') {
     final orderId = _orderIdOf(message.data);
@@ -142,117 +327,29 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
+  debugPrint('[NEW_ORDER] type = ${message.data['type']}');
   if (message.data['type'] != 'new_order') return;
 
-  // The tray copy FCM posted itself is the fallback for ROMs where this handler
-  // never runs. We take it down once OUR alert is actually on screen — never
-  // before, or a failure to show leaves the rider with nothing at all.
-  final incomingOrderId = _orderIdOf(message.data);
-  Future<void> dropTrayCopy() async {
-    if (incomingOrderId != null) await cancelFcmTrayCopy(incomingOrderId);
-  }
-
-  // Try the overlay bubble first, but never trust it blindly — if the
-  // permission check races with it being revoked, the plugin throws, or the
-  // OEM ROM silently drops the overlay window, `showForOrder` now reports
-  // that honestly instead of us assuming success. Whatever happens here,
-  // the full-screen-intent notification below is the guaranteed fallback so
-  // a delivered push is never left with nothing shown on screen.
-  var overlayShown = false;
-  try {
-    if (await OrderOverlayService.hasPermission()) {
-      overlayShown = await OrderOverlayService.showForOrder(message.data);
-    }
-  } catch (_) {
-    overlayShown = false;
-  }
-
-  if (overlayShown) {
-    await dropTrayCopy();
+  final push = NewOrderPush.parse(message.data);
+  if (push == null) {
+    debugPrint('[NEW_ORDER] orderId = MISSING — push carries no order id, '
+        'nothing to show');
     return;
   }
-  try {
-    // A fresh isolate — the channel/plugin registered by FcmService.initialize()
-    // in the main isolate doesn't exist here, so set both up again.
-    final localNotifications = FlutterLocalNotificationsPlugin();
-    await localNotifications.initialize(
-      const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/launcher_icon'),
-      ),
-      onDidReceiveBackgroundNotificationResponse: backgroundNotificationResponseHandler,
-    );
-    await localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(_incomingOrdersChannel);
+  debugPrint('[NEW_ORDER] orderId = ${push.orderId}');
+  debugPrint('[NEW_ORDER] earning = ${push.earning}');
 
-    final pickup = message.data['pickupAddress'] as String? ?? 'Restaurant';
-    final drop = message.data['dropAddress'] as String? ?? 'Customer';
-    final price = message.data['price'] as String? ?? '';
-    final distance = message.data['distance'] as String? ?? '';
-    final body = 'From: $pickup\nTo: $drop\nEarnings: ₹$price | Dist: ${distance}km';
-
-    await localNotifications.show(
-      incomingOrderNotificationId(_orderIdOf(message.data) ?? ''),
-      message.data['restaurantName'] as String? ?? 'New order',
-      body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _incomingOrdersChannel.id,
-          _incomingOrdersChannel.name,
-          channelDescription: _incomingOrdersChannel.description,
-          importance: Importance.max,
-          priority: Priority.high,
-          category: AndroidNotificationCategory.call,
-          fullScreenIntent: true,
-          ongoing: true,
-          playSound: true,
-          styleInformation: BigTextStyleInformation(body),
-          actions: <AndroidNotificationAction>[
-            const AndroidNotificationAction(
-              'accept',
-              'Accept',
-              showsUserInterface: true,
-              cancelNotification: true,
-            ),
-            const AndroidNotificationAction(
-              'reject',
-              'Reject',
-              showsUserInterface: true,
-              cancelNotification: true,
-            ),
-          ],
-        ),
-      ),
-      payload: jsonEncode(message.data),
-    );
-    await dropTrayCopy();
-  } catch (_) {
-    // Last resort: the full-screen path itself failed (channel creation
-    // race, plugin init error, etc.) — still surface a plain heads-up
-    // notification with sound so the push isn't entirely invisible to the
-    // rider instead of silently vanishing.
-    try {
-      await FlutterLocalNotificationsPlugin().show(
-        message.hashCode,
-        message.data['restaurantName'] as String? ?? 'New order',
-        'Tap to view your new order',
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _incomingOrdersChannel.id,
-            _incomingOrdersChannel.name,
-            channelDescription: _incomingOrdersChannel.description,
-            importance: Importance.max,
-            priority: Priority.high,
-            sound: const RawResourceAndroidNotificationSound('tujh_bin1'),
-            playSound: true,
-          ),
-        ),
-        payload: jsonEncode(message.data),
-      );
-    } catch (_) {
-      // Genuinely nothing more we can do from a background isolate.
-    }
+  // Android posts this natively — see NewOrderNotifier. It has to be decided
+  // there because that is the only place that knows whether the floating card
+  // went up, and posting from here as well is what put a notification on top of
+  // the card. iOS still renders the APNs alert the server sends.
+  if (Platform.isAndroid) {
+    debugPrint('[NEW_ORDER_NOTIFICATION] handled natively — Dart posts nothing');
+    return;
   }
+
+  // iOS: the APNs alert the server sends is what the partner sees, and tapping
+  // it routes through onMessageOpenedApp. Nothing to post here.
 }
 
 /// The backend's FCM_DEFAULT_CHANNEL_ID, used for every push that is NOT a
@@ -317,19 +414,20 @@ class FcmService {
           >();
       await androidPlugin?.createNotificationChannel(_channel);
       await androidPlugin?.createNotificationChannel(_highImportanceChannel);
-      await androidPlugin?.createNotificationChannel(_incomingOrdersChannel);
+      await androidPlugin?.createNotificationChannel(_newOrdersChannel);
+      await androidPlugin?.createNotificationChannel(_legacyServerChannel);
+      debugPrint('[NOTIFICATION_CHANNEL] id = $_newOrdersChannelId');
+      debugPrint('[NOTIFICATION_CHANNEL] importance = HIGH');
+      debugPrint('[NOTIFICATION_CHANNEL] sound = neworder.mp3 (alarm usage)');
+      debugPrint('[NOTIFICATION_CHANNEL] vibration = enabled');
     }
 
     await ensureAndroidAlertPermissions();
 
-    // Cold start via the full-screen-intent notification (lock screen /
-    // killed app) — onDidReceiveNotificationResponse above isn't guaranteed
-    // to fire for the launching notification itself, so check explicitly.
     final launchDetails = await _localNotifications.getNotificationAppLaunchDetails();
     final launchResponse = launchDetails?.notificationResponse;
     if ((launchDetails?.didNotificationLaunchApp ?? false) && launchResponse != null) {
-      // Goes through the same path as a live tap so an Accept/Reject pressed on a
-      // terminated app still performs the action rather than only opening the order.
+      debugPrint('[FCM] NOTIFICATION TAPPED (App Launch): ${launchResponse.payload}');
       _handleNotificationResponse(launchResponse);
     }
 
@@ -337,25 +435,17 @@ class FcmService {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationOpen);
 
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-    if (initialMessage != null) _handleNotificationOpen(initialMessage);
+    if (initialMessage != null) {
+      debugPrint('[FCM] NOTIFICATION TAPPED (Initial Message): ${initialMessage.data}');
+      _handleNotificationOpen(initialMessage);
+    }
 
-    FirebaseMessaging.instance.onTokenRefresh.listen(_saveToken);
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+      debugPrint('[FCM] FCM TOKEN REFRESHED: $token');
+      _saveToken(token);
+    });
   }
 
-  /// Re-checked on every cold start AND every app resume (see main.dart's
-  /// `didChangeAppLifecycleState`), not just once at cold start.
-  ///
-  /// Android 14+ revokes USE_FULL_SCREEN_INTENT by default for apps without
-  /// calling/alarm functionality, even though it's declared in the
-  /// manifest — without this explicit grant, fullScreenIntent notifications
-  /// silently downgrade to a normal heads-up banner on both the lock screen
-  /// and home screen. `requestFullScreenIntentPermission()` no-ops (returns
-  /// true) if already granted or on pre-Android-14 devices, so it's cheap
-  /// to call repeatedly. Re-running it on resume also catches riders who
-  /// dismissed the Settings prompt the first time, or who granted/revoked
-  /// it manually from system Settings mid-session — a one-shot check at
-  /// process init would otherwise miss both cases for the app's entire
-  /// lifetime in memory.
   Future<void> ensureAndroidAlertPermissions() async {
     if (!Platform.isAndroid) return;
 
@@ -364,29 +454,12 @@ class FcmService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     await androidPlugin?.requestFullScreenIntentPermission();
-
-    // Overlay bubble permission ("display over other apps") — powers the
-    // floating home-screen bubble for new orders that arrive while the app
-    // is backgrounded (see OrderOverlayService). Separate from the
-    // full-screen-intent permission above, which only covers the locked-
-    // device case.
-    await OrderOverlayService.requestPermission();
   }
 
-  /// Routes a notification interaction: an Accept/Reject action button, or a
-  /// plain tap on the notification body.
-  ///
-  /// The action id was previously discarded, so both buttons did exactly the same
-  /// thing as tapping the notification — open the order screen. They looked like
-  /// Accept and Reject but neither accepted nor rejected anything.
-  ///
-  /// Both actions are declared `showsUserInterface: true`, so the OS launches or
-  /// resumes the app before dispatching here. That means the main isolate is alive
-  /// and the injected Dio client (with its auth interceptor) is usable — no
-  /// separate isolate-safe path is needed.
   void _handleNotificationResponse(NotificationResponse response) async {
     final payload = response.payload;
     final actionId = response.actionId;
+    debugPrint('[FCM] NOTIFICATION TAPPED: payload=$payload, actionId=$actionId');
 
     if (actionId == 'accept') {
       final orderId = _orderIdFromPayload(payload);
@@ -418,9 +491,7 @@ class FcmService {
         final id = (decoded['orderMongoId'] ?? decoded['orderId'])?.toString();
         return (id == null || id.isEmpty) ? null : id;
       }
-    } catch (_) {
-      // Legacy bare-orderId payload.
-    }
+    } catch (_) {}
     return payload;
   }
 
@@ -434,15 +505,9 @@ class FcmService {
             ? ApiEndpoints.orderAccept(orderId)
             : ApiEndpoints.orderReject(orderId),
       );
-    } catch (_) {
-      // Best-effort: the offer may already have expired or gone to another rider.
-      // The order screen we open alongside this shows the real current state.
-    }
+    } catch (_) {}
   }
 
-  /// Payload from a locally-shown notification — the full-screen incoming-
-  /// order alert encodes the whole data map as JSON; older/other local
-  /// notifications may still carry a bare orderId string.
   void _handleLocalNotificationPayload(String payload) {
     try {
       final decoded = jsonDecode(payload);
@@ -450,40 +515,35 @@ class FcmService {
         _notificationTapController.add(Map<String, dynamic>.from(decoded));
         return;
       }
-    } catch (_) {
-      // Not JSON — fall through to the legacy plain-orderId form.
-    }
+    } catch (_) {}
     _notificationTapController.add({'orderId': payload});
   }
 
+
   Future<void> registerToken() async {
     final token = await FirebaseMessaging.instance.getToken();
-    if (token != null) await _saveToken(token);
+    if (token == null) {
+      debugPrint('[FCM] FCM TOKEN GENERATED: none returned');
+      return;
+    }
+    debugPrint('[FCM] FCM TOKEN GENERATED: $token');
+    await _saveToken(token);
   }
 
   Future<void> _saveToken(String token) async {
     await _tokenStorage.saveFcmToken(token);
+    debugPrint('[FCM] FCM TOKEN SENT TO BACKEND: $token');
     try {
       await _dio.post(
         ApiEndpoints.fcmTokenSaveMobile,
         data: {'token': token, 'platform': 'mobile'},
       );
-    } catch (_) {
-      // Best-effort — token is also sent at OTP verify / registration.
+      debugPrint('[FCM] FCM TOKEN SAVED SUCCESSFULLY: $token');
+    } catch (e) {
+      debugPrint('[FCM] FCM TOKEN SAVE FAILED: $token — $e');
     }
   }
 
-  /// Unsubscribes this device from pushes for the account being signed out.
-  ///
-  /// The token was not being sent, so the server had no idea which device to
-  /// detach — it rejected the call, this catch swallowed the error, and logout
-  /// completed locally with the token still attached. The rider signed out and
-  /// kept receiving new-order alerts.
-  ///
-  /// Sends the token the device actually holds so only this device is detached.
-  /// Falls back to the live FCM token when nothing was stored, and to a bare
-  /// request when neither is available — the server treats that as "sign this
-  /// owner out everywhere", which is still better than leaving it subscribed.
   Future<void> removeToken() async {
     String? token = await _tokenStorage.getFcmToken();
     if (token == null || token.isEmpty) {
@@ -499,36 +559,26 @@ class FcmService {
         ApiEndpoints.fcmTokenRemove,
         data: (token != null && token.isNotEmpty) ? {'token': token} : null,
       );
-    } catch (_) {
-      // Ignore — logging out locally regardless.
-    }
+    } catch (_) {}
     try {
-      // Force Firebase to invalidate this token locally. This guarantees that 
-      // even if the backend fails to remove it from the old user's profile, 
-      // this device will no longer receive their pushes. The next user to 
-      // log in will get a brand new unique token.
       await FirebaseMessaging.instance.deleteToken();
     } catch (_) {}
   }
 
   void _showForegroundNotification(RemoteMessage message) {
+    offerLog('foreground push type=${message.data['type']} '
+        'id=${_orderIdOf(message.data)} display=${message.data['orderDisplayId']}');
+    debugPrint('[FCM] FCM MESSAGE RECEIVED: ${message.data}');
     _notificationReceivedController.add(message.data);
 
-    // Foreground gets the same withdrawal. The in-app alert is cleared by the
-    // controller listening to the stream above; the overlay and any tray alert
-    // raised earlier while backgrounded are cleared here.
     if (message.data['type'] == 'order_taken') {
       final orderId = _orderIdOf(message.data);
       if (orderId != null) {
-        OrderOverlayService.closeForOrder(orderId);
         _localNotifications.cancel(incomingOrderNotificationId(orderId));
       }
       return;
     }
 
-    // 'new_order' pushes are already handled by the full-screen incoming-
-    // order overlay (driven by the line above) — showing the plain tray
-    // notification too would duplicate/compete with it.
     if (message.data['type'] == 'new_order') return;
     final notification = message.notification;
     if (notification == null) return;
@@ -549,9 +599,13 @@ class FcmService {
       ),
       payload: message.data['orderId'] as String?,
     );
+    debugPrint('[FCM] NOTIFICATION DISPLAYED: ${notification.title}');
   }
 
   void _handleNotificationOpen(RemoteMessage message) {
+    offerLog('notification tapped type=${message.data['type']} '
+        'id=${_orderIdOf(message.data)}');
+    debugPrint('[FCM] NOTIFICATION TAPPED: ${message.data}');
     _notificationTapController.add(message.data);
   }
 

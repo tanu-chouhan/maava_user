@@ -193,7 +193,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                     Text(
                       _isNewUserMode
                           ? 'Enter your name to register your account with +91 ${_phoneController.text.trim()}'
-                          : 'We will send a 4-digit verification code to verify your phone number.',
+                          : 'We will send a ${OtpScreen.otpLength}-digit verification code to verify your phone number.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13.5,

@@ -105,6 +105,36 @@ class DriverDetailsScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
+                  'DELIVERY SERVICES',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                TextButton(
+                  onPressed: user == null
+                      ? null
+                      : () => _openServiceTypeDialog(context, ref, user),
+                  child: Text(
+                    'EDIT',
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            _buildServiceTypeCard(theme, textColor, user),
+            SizedBox(height: 30.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
                   'BANK & PAYMENTS',
                   style: TextStyle(
                     color: Colors.grey[600],
@@ -441,6 +471,109 @@ class DriverDetailsScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildServiceTypeCard(ThemeData theme, Color textColor, DeliveryPartner? user) {
+    return Container(
+      padding: EdgeInsets.all(16.r),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(20.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(12.r),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Icon(
+              Icons.delivery_dining_rounded,
+              color: theme.primaryColor,
+              size: 28.sp,
+            ),
+          ),
+          SizedBox(width: 16.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ORDER TYPES YOU RECEIVE',
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  user?.serviceTypeLabel ?? 'Not set',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openServiceTypeDialog(
+    BuildContext context,
+    WidgetRef ref,
+    DeliveryPartner user,
+  ) async {
+    const options = [
+      ('food', 'Restaurant Delivery', Icons.restaurant_rounded),
+      ('quick', 'Mart Delivery', Icons.local_grocery_store_rounded),
+      ('both', 'Both Restaurant & Mart', Icons.all_inclusive_rounded),
+    ];
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text('Delivery services'),
+        children: [
+          for (final (value, label, icon) in options)
+            RadioListTile<String>(
+              value: value,
+              groupValue: user.serviceType,
+              onChanged: (v) => Navigator.of(dialogContext).pop(v),
+              title: Text(label),
+              secondary: Icon(icon),
+            ),
+        ],
+      ),
+    );
+    if (selected == null || selected == user.serviceType) return;
+
+    final result = await ref
+        .read(profileRepositoryProvider)
+        .updateProfile({'serviceType': selected});
+    if (!context.mounted) return;
+    result.when(
+      success: (_) {
+        ref.read(authControllerProvider.notifier).checkAuthStatus();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Delivery services updated')),
+        );
+      },
+      failure: (e) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
       ),
     );
   }

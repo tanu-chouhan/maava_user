@@ -67,6 +67,17 @@ class SoundService {
   /// honest about whether a stop actually silenced something.
   static bool _ringtonePlaying = false;
 
+  /// Bumped by every play AND every stop, to cancel a play that is still in
+  /// flight.
+  ///
+  /// [playRingtone] is not atomic — it awaits four platform calls before the
+  /// sound actually starts, which measured ~840ms on device. A stop arriving
+  /// inside that window found nothing playing, did nothing, and then `play()`
+  /// completed behind it and looped forever with nothing left to stop it. That
+  /// is exactly what happened on accept: the alarm was silenced at 38.857 and
+  /// started at 39.000.
+  static int _ringtoneSeq = 0;
+
   static bool get isRingtonePlaying => _ringtonePlaying;
 
   /// Every ringtone transition is logged under this tag. It loops until
@@ -81,13 +92,28 @@ class SoundService {
   /// bubble run in different isolates with their own player, so when it rings
   /// twice or won't stop, the log has to say which one.
   static Future<void> playRingtone({String source = 'unknown'}) async {
+    final seq = ++_ringtoneSeq;
     _log('play requested by $source (already playing: $_ringtonePlaying)');
+
+    /// True once a stop — or a newer play — has superseded this one.
+    bool superseded() => seq != _ringtoneSeq;
+
     try {
       await _ringtonePlayer.stop();
+      if (superseded()) return _log('play by $source cancelled before setup');
       await _ringtonePlayer.setAudioContext(_ringtoneContext);
+      if (superseded()) return _log('play by $source cancelled before loop mode');
       await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
       await _ringtonePlayer.setVolume(1.0);
+      if (superseded()) return _log('play by $source cancelled before start');
       await _ringtonePlayer.play(AssetSource(_ringtoneAsset));
+
+      // Checked again AFTER play: a stop can land during play() itself, and by
+      // then the loop is running, so it has to be undone rather than skipped.
+      if (superseded()) {
+        await _ringtonePlayer.stop();
+        return _log('play by $source started late and was undone');
+      }
       _ringtonePlaying = true;
       _log('playing $_ringtoneAsset (looping) — started by $source');
     } catch (e, s) {
@@ -100,6 +126,9 @@ class SoundService {
   }
 
   static Future<void> stopRingtone({String source = 'unknown'}) async {
+    // Invalidates any play still working through its await chain, so it can
+    // never start behind this stop.
+    _ringtoneSeq++;
     _log('stop requested by $source (was playing: $_ringtonePlaying)');
     try {
       await _ringtonePlayer.stop();

@@ -1,9 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import '../constants/app_constants.dart';
+
+/// One prefix for every log line on the offer path, so `adb logcat | grep
+/// "\[offer\]"` tells the whole story of an incoming order in order.
+void offerLog(String message) => debugPrint('[offer] $message');
 
 /// Wraps the Socket.IO connection to the delivery backend and exposes
 /// broadcast streams for the events documented in the realtime section

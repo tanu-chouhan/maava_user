@@ -3,18 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../core/constants/app_durations.dart';
-import '../../../../core/theme/app_radii.dart';
+import '../../../../../presentation/branding/app_colors.dart';
+import '../../../../../shared/ui/food_style_card.dart';
+import '../../../../core/extensions/num_extensions.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/model/order.dart';
 import '../../../../navigation/route_paths.dart';
+import '../../../common/widgets/buttons/primary_button.dart';
 import '../../../common/widgets/buttons/secondary_button.dart';
 import '../../../common/widgets/feedback/app_toast.dart';
 import '../../../common/widgets/loaders/full_page_loader.dart';
-import '../../../common/widgets/misc/rating_stars.dart';
 import '../../../common/widgets/maps/order_route_map.dart';
+import '../../../common/widgets/misc/rating_stars.dart';
 import '../../../common/widgets/states/error_state_widget.dart';
 import '../../chat/chat_screen.dart';
 import '../order_details/order_details_provider.dart';
@@ -29,10 +29,6 @@ class OrderTrackingScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Everything the page chrome renders — but NOT the rider location, which
-    // updates every couple of seconds and is watched by the isolated map alone.
-    // The extra status/eta/rider tokens are here because `Order.==` is id-only
-    // and would otherwise hide those changes from the record's equality check.
     final view = ref.watch(orderDetailProvider(orderId).select((s) => (
           order: s.order,
           status: s.order?.status,
@@ -59,9 +55,8 @@ class OrderTrackingScreen extends ConsumerWidget {
       );
     }
 
-    // Reached two ways: pushed from the orders list (pop works), and `go`n to
-    // from the order-success screen, which leaves no history — back there used
-    // to fall through to the OS and close the app.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -73,8 +68,15 @@ class OrderTrackingScreen extends ConsumerWidget {
         }
       },
       child: Scaffold(
+        backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF4F5F7),
         appBar: AppBar(
-          title: Text(order.displayId),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: Text(
+            'Order ${order.displayId}',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
           actions: [
             OrderStatusChip(status: order.status),
             const SizedBox(width: AppSpacing.lg),
@@ -85,41 +87,49 @@ class OrderTrackingScreen extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
             children: [
               _LiveStatusBanner(order: order),
-              // Isolated: only this widget rebuilds when the rider moves, so a
-              // location ping never re-runs the banner, timeline or buttons.
               _TrackingMap(orderId: orderId),
               if (order.status.isOutForDelivery && view.dropOtp.isNotEmpty)
                 _DropOtpCard(otp: view.dropOtp),
               if (order.deliveryPartner != null)
                 _RiderCard(partner: order.deliveryPartner!, orderId: order.id),
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: TrackingTimeline(order: order),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-                child: SecondaryButton(
-                  label: 'Need help with this order?',
-                  icon: Icons.support_agent_rounded,
-                  expand: true,
-                  backgroundColor: context.colors.primary,
-                  foregroundColor: Colors.black,
-                  borderColor: Colors.transparent,
-                  fontWeight: FontWeight.bold,
-                  onPressed: () => context.push(RoutePaths.help),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter, vertical: AppSpacing.sm),
+                child: FoodStyleCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Live Order Status',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TrackingTimeline(order: order),
+                    ],
+                  ),
                 ),
               ),
+              _OrderSummaryCard(order: order),
               const SizedBox(height: AppSpacing.md),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+                child: PrimaryButton(
+                  label: 'Need help with this order?',
+                  icon: Icons.support_agent_rounded,
+                  onPressed: () => context.push(RoutePaths.help),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
                 child: SecondaryButton(
-                  label: 'View order details',
+                  label: 'View full order details',
                   icon: Icons.receipt_long_rounded,
                   expand: true,
-                  backgroundColor: context.colors.primary,
-                  foregroundColor: Colors.black,
-                  borderColor: Colors.transparent,
-                  fontWeight: FontWeight.bold,
                   onPressed: () =>
                       context.push(RoutePaths.orderDetailsOf(order.id)),
                 ),
@@ -132,9 +142,7 @@ class OrderTrackingScreen extends ConsumerWidget {
   }
 }
 
-/// The live map, isolated so it is the only thing that rebuilds on a rider
-/// GPS ping. It watches just the route and the rider position (the latter now
-/// value-compared via `GeoPoint.==`, so an identical ping rebuilds nothing).
+/// The live map, isolated so it is the only thing that rebuilds on a rider GPS ping.
 class _TrackingMap extends ConsumerWidget {
   const _TrackingMap({required this.orderId});
 
@@ -147,15 +155,22 @@ class _TrackingMap extends ConsumerWidget {
     final riderLocation = ref.watch(provider.select((s) => s.riderLocation));
 
     return Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      // Real route, drawn from the polyline the backend returns. The map SDK
-      // carries its own native key. Prefers the live socket position.
-      child: OrderRouteMap(route: route, riderLocation: riderLocation),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter, vertical: AppSpacing.xs),
+      child: FoodStyleCard(
+        padding: EdgeInsets.zero,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: SizedBox(
+            height: 220,
+            child: OrderRouteMap(route: route, riderLocation: riderLocation),
+          ),
+        ),
+      ),
     );
   }
 }
 
-/// Pulsing scooter + live ETA at the top of the screen.
+/// Gradient banner + pulsing status icon & live ETA at top.
 class _LiveStatusBanner extends StatefulWidget {
   const _LiveStatusBanner({required this.order});
 
@@ -185,16 +200,26 @@ class _LiveStatusBannerState extends State<_LiveStatusBanner>
 
     return Container(
       margin: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        0,
+        AppSpacing.gutter,
+        AppSpacing.sm,
+        AppSpacing.gutter,
+        AppSpacing.xs,
       ),
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: context.colors.primary,
-        borderRadius: AppRadii.rLg,
-        boxShadow: context.semantic.floatingShadow,
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryDeep],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -206,13 +231,13 @@ class _LiveStatusBannerState extends State<_LiveStatusBanner>
               child: Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: context.colors.surface.withValues(alpha: 0.18),
+                  color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  live ? Icons.delivery_dining_rounded : Icons.check_rounded,
-                  size: 26,
-                  color: context.colors.surface,
+                  live ? Icons.delivery_dining_rounded : Icons.check_circle_rounded,
+                  size: 28,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -224,19 +249,23 @@ class _LiveStatusBannerState extends State<_LiveStatusBanner>
               children: [
                 Text(
                   order.status.label,
-                  style: context.text.titleLarge!.copyWith(
-                    color: context.colors.surface,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xxs),
+                const SizedBox(height: 2),
                 Text(
                   live
                       ? order.etaMinutes != null
-                            ? 'Arriving in about ${order.etaMinutes} minutes'
-                            : 'We will share an ETA shortly'
-                      : 'Thanks for shopping with MAAVA',
-                  style: context.text.bodyMedium!.copyWith(
-                    color: Colors.white.withValues(alpha: 0.86),
+                          ? 'Arriving in about ${order.etaMinutes} minutes'
+                          : 'Preparing your order'
+                      : 'Order completed · Thank you!',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -255,47 +284,73 @@ class _DropOtpCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: context.semantic.warningSoft,
-        borderRadius: AppRadii.rLg,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Delivery OTP', style: context.text.titleMedium),
-                Text(
-                  'Share this with your rider at handover',
-                  style: context.text.bodySmall,
-                ),
-              ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter, vertical: AppSpacing.xs),
+      child: FoodStyleCard(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.lock_rounded,
+                color: Color(0xFFD97706),
+                size: 22,
+              ),
             ),
-          ),
-          Row(
-            children: otp
-                .split('')
-                .map(
-                  (digit) => Container(
-                    margin: const EdgeInsets.only(left: AppSpacing.sm),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Delivery OTP',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
                     ),
-                    decoration: BoxDecoration(
-                      color: context.colors.surface,
-                      borderRadius: AppRadii.rSm,
-                    ),
-                    child: Text(digit, style: context.text.priceLarge),
                   ),
-                )
-                .toList(),
-          ),
-        ],
+                  SizedBox(height: 2),
+                  Text(
+                    'Share code with rider at door',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: otp
+                  .split('')
+                  .map(
+                    (digit) => Container(
+                      margin: const EdgeInsets.only(left: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        digit,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -309,65 +364,74 @@ class _RiderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(AppSpacing.lg),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: AppRadii.rLg,
-        border: Border.all(color: context.semantic.border),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: context.colors.primary.withValues(alpha: 0.12),
-            child: Icon(Icons.person_rounded, color: context.colors.primary),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(partner.name, style: context.text.titleMedium),
-                if (partner.rating > 0)
-                  RatingStars(rating: partner.rating, size: 11),
-                if (partner.vehicleNumber.isNotEmpty)
-                  Text(partner.vehicleNumber, style: context.text.bodySmall),
-              ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter, vertical: AppSpacing.xs),
+      child: FoodStyleCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+              child: Icon(Icons.person_rounded, color: AppColors.primary, size: 28),
             ),
-          ),
-          _RiderAction(
-            icon: Icons.call_rounded,
-            label: 'Call',
-            // The rider's real phone comes populated on the order
-            // (`dispatch.deliveryPartnerId.phone`). Enabled only when it is
-            // present; disabled otherwise so we never dial a blank number.
-            onTap: partner.phone.trim().isEmpty
-                ? null
-                : () => _callRider(context, partner.phone),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _RiderAction(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'Message',
-            // The rider is assigned by the time this card renders, so chat is
-            // live. Open the real thread keyed on this order.
-            onTap: () => context.push(
-              RoutePaths.orderChatOf(orderId),
-              extra: ChatArgs(riderName: partner.name),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    partner.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      if (partner.rating > 0) ...[
+                        RatingStars(rating: partner.rating, size: 11),
+                        const SizedBox(width: 6),
+                      ],
+                      if (partner.vehicleNumber.isNotEmpty)
+                        Text(
+                          partner.vehicleNumber,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            _RiderAction(
+              icon: Icons.call_rounded,
+              label: 'Call',
+              onTap: partner.phone.trim().isEmpty
+                  ? null
+                  : () => _callRider(context, partner.phone),
+            ),
+            const SizedBox(width: 8),
+            _RiderAction(
+              icon: Icons.chat_bubble_outline_rounded,
+              label: 'Message',
+              onTap: () => context.push(
+                RoutePaths.orderChatOf(orderId),
+                extra: ChatArgs(riderName: partner.name),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  /// Opens the system dialer pre-filled with the rider's number. Works on both
-  /// Android and iOS — a `tel:` URL is the platform-native "start a call" intent.
   Future<void> _callRider(BuildContext context, String rawPhone) async {
-    // Keep digits and a single leading '+'; strip spaces, dashes, brackets so
-    // the dialer gets a clean number.
     final cleaned = rawPhone.trim();
     final digits = cleaned.replaceAll(RegExp(r'[^0-9+]'), '');
     if (digits.replaceAll('+', '').isEmpty) {
@@ -396,30 +460,131 @@ class _RiderAction extends StatelessWidget {
 
   final IconData icon;
   final String label;
-
-  /// Null disables the action — same shape, dimmed, ignores taps.
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: label,
-      child: Opacity(
-        opacity: enabled ? 1 : 0.4,
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: AppDurations.fast,
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: context.colors.primary.withValues(alpha: 0.10),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 18, color: context.colors.primary),
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
           ),
+          child: Icon(icon, size: 20, color: AppColors.primary),
+        ),
+      ),
+    );
+  }
+}
+
+class _OrderSummaryCard extends StatelessWidget {
+  const _OrderSummaryCard({required this.order});
+
+  final Order order;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter, vertical: AppSpacing.xs),
+      child: FoodStyleCard(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.shopping_bag_outlined,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Order Summary',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (order.lines.isNotEmpty) ...[
+              for (final item in order.lines)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${item.quantity}x',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        item.lineTotal.asCurrency,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 12),
+              Divider(color: isDark ? AppColors.borderDark : const Color(0xFFF1F5F9)),
+              const SizedBox(height: 12),
+            ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Paid via ${order.paymentMethod.label}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                  ),
+                ),
+                Text(
+                  order.pricing.total.asCurrency,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

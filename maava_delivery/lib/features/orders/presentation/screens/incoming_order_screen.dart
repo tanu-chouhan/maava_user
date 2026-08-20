@@ -12,7 +12,7 @@ import 'package:maava_delivery/core/error/result.dart';
 import 'package:maava_delivery/core/constants/map_styles.dart';
 import 'package:maava_delivery/core/services/haptic_service.dart';
 import 'package:maava_delivery/core/services/location_service.dart';
-import 'package:maava_delivery/core/services/sound_service.dart';
+import 'package:maava_delivery/core/services/order_alert.dart';
 import 'package:maava_delivery/core/utils/polyline_decoder.dart';
 import 'package:maava_delivery/features/auth/application/auth_controller.dart';
 import 'package:maava_delivery/features/auth/application/auth_state.dart';
@@ -52,16 +52,23 @@ class _IncomingOrderScreenState extends ConsumerState<IncomingOrderScreen> {
   bool _routeFetchInFlight = false;
   bool _cameraCentered = false;
 
+  /// Token from [OrderAlert.start]; dispose passes it back so a stale disposal
+  /// of a replaced alert cannot silence the ringtone of a newer one.
+  late final int _alarmToken;
+
   @override
   void initState() {
     super.initState();
     HapticService.light();
-    SoundService.playRingtone(source: 'IncomingOrderScreen');
 
     final deadline = widget.order.acceptanceDeadlineAt;
     _secondsLeft = deadline != null
         ? deadline.difference(DateTime.now()).inSeconds.clamp(0, 45)
         : 45;
+    _alarmToken = OrderAlert.start(
+      source: 'IncomingOrderScreen',
+      window: Duration(seconds: _secondsLeft),
+    );
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       if (_secondsLeft <= 1) {
@@ -172,7 +179,7 @@ class _IncomingOrderScreenState extends ConsumerState<IncomingOrderScreen> {
     _positionSub?.cancel();
     // Backstop — accept/decline/expire already stopped it. Covers the screen
     // being torn down some other way (navigation, hot reload).
-    SoundService.stopRingtone(source: 'IncomingOrderScreen.dispose');
+    OrderAlert.stop(source: 'IncomingOrderScreen.dispose', token: _alarmToken);
     super.dispose();
   }
 
@@ -183,7 +190,7 @@ class _IncomingOrderScreenState extends ConsumerState<IncomingOrderScreen> {
     if (_resolving) return;
     _resolving = true;
     _timer?.cancel();
-    SoundService.stopRingtone(source: 'IncomingOrderScreen.accept');
+    await OrderAlert.stop(source: 'IncomingOrderScreen.accept');
     await ref.read(incomingOrderControllerProvider.notifier).accept();
   }
 
@@ -191,14 +198,14 @@ class _IncomingOrderScreenState extends ConsumerState<IncomingOrderScreen> {
     if (_resolving) return;
     _resolving = true;
     _timer?.cancel();
-    SoundService.stopRingtone(source: 'IncomingOrderScreen.decline');
+    await OrderAlert.stop(source: 'IncomingOrderScreen.decline');
     await ref.read(incomingOrderControllerProvider.notifier).decline();
   }
 
   Future<void> _expire() async {
     if (_resolving) return;
     _resolving = true;
-    SoundService.stopRingtone(source: 'IncomingOrderScreen.expire');
+    await OrderAlert.stop(source: 'IncomingOrderScreen.expire');
     await ref.read(incomingOrderControllerProvider.notifier).expire();
   }
 
@@ -419,7 +426,9 @@ class _IncomingOrderScreenState extends ConsumerState<IncomingOrderScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildTimelineRow(
-                          title: 'RESTAURANT PICKUP',
+                          title: order.isMartOrder
+                              ? 'MART PICKUP'
+                              : 'RESTAURANT PICKUP',
                           name: order.restaurant.name,
                           address: order.restaurant.address,
                           dotColor: const Color(0xFFE85B17), // Orange
@@ -477,7 +486,11 @@ class _IncomingOrderScreenState extends ConsumerState<IncomingOrderScreen> {
               border: Border.all(color: const Color(0xFFE85B17), width: 1.5),
             ),
             child: Text(
-              'NEW ORDER   ·   #6A6AFD6B', // Placeholder ID style from mock
+              [
+                'NEW ${order.serviceLabel?.toUpperCase() ?? ''} ORDER'
+                    .replaceAll('  ', ' '),
+                if (order.orderCode.isNotEmpty) '#${order.orderCode}',
+              ].join('   ·   '),
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.sp, color: const Color(0xFFE85B17)),
             ),
           ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:smart_auth/smart_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,11 @@ import 'profile_setup_screen.dart';
 import '../../common_widgets/smart_image.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
+  /// Digits in an OTP, as the backend issues them. Public so the login screen
+  /// describes the same code this screen accepts — those two drifted apart
+  /// when the backend moved from 4 to 6 digits.
+  static const int otpLength = 6;
+
   final String phoneNumber;
 
   final String? name;
@@ -31,8 +37,18 @@ class OtpScreen extends ConsumerStatefulWidget {
 }
 
 class _OtpScreenState extends ConsumerState<OtpScreen> {
-  final List<TextEditingController> _controllers = List.generate(4, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
+  /// Digits in an OTP, as the backend issues them.
+  ///
+  /// Everything on this screen derives from this — box count, layout, the
+  /// "enter the N-digit code" copy, the completeness check and the autofill
+  /// distribution. It was hardcoded as 4 in eight places, so when the backend
+  /// moved to 6-digit codes the screen could not accept one at all: two digits
+  /// had nowhere to go, the completeness check never fired, and autofill
+  /// silently dropped the overflow.
+  final List<TextEditingController> _controllers =
+      List.generate(OtpScreen.otpLength, (_) => TextEditingController());
+  final List<FocusNode> _focusNodes =
+      List.generate(OtpScreen.otpLength, (_) => FocusNode());
 
   int _resendCountdown = 30;
   Timer? _timer;
@@ -43,6 +59,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     super.initState();
     if (kDebugMode) debugPrint('[AUTH] OTP screen opened for +91 ${widget.phoneNumber}');
     _startResendTimer();
+
+    _listenForSms();
 
     // The field starts empty. It used to be prefilled with the backend's
     // echoed OTP, falling back to a literal '1234' when there was none — so in
@@ -57,8 +75,39 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     });
   }
 
+  /// Reads the incoming OTP SMS via the SMS **User Consent** API.
+  ///
+  /// Chosen over SMS Retriever because Retriever requires an 11-char app hash
+  /// inside the SMS body, which would mean changing the DLT-approved template
+  /// server-side. User Consent needs no such change and, critically, no
+  /// SMS/phone permission — Android shows a one-tap system prompt instead, and
+  /// only for a message that arrives while this screen is listening.
+  ///
+  /// The future completes when the SMS arrives, the user declines, or the
+  /// listener is torn down; it never blocks manual entry.
+  Future<void> _listenForSms() async {
+    try {
+      final result = await SmartAuth.instance.getSmsWithUserConsentApi(
+        // Codes are 4-8 digits; anchor on the configured length first.
+        matcher: '\\d{${OtpScreen.otpLength}}',
+      );
+      if (!mounted) return;
+      final code = result.data?.code;
+      if (code == null || code.isEmpty) return;
+      // Reuse the same path as paste/iOS autofill so ordering and the
+      // auto-submit guard behave identically however the code arrives.
+      _fillFromAutofill(code);
+    } catch (_) {
+      // Consent declined, unsupported device, or Play Services missing —
+      // manual entry is unaffected, so there is nothing to report.
+    }
+  }
+
   @override
   void dispose() {
+    // Stop the listener with the screen, so returning to it starts a fresh one
+    // rather than stacking a second consent prompt.
+    SmartAuth.instance.removeUserConsentApiListener();
     _timer?.cancel();
     for (final c in _controllers) {
       c.dispose();
@@ -104,7 +153,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       _focusNodes.last.unfocus();
       // Same guard as manual entry: never let autofill race the Verify button
       // into submitting a single-use OTP twice.
-      if (_enteredOtp.length == 4 && !_isVerifying) _verifyOtp();
+      if (_enteredOtp.length == OtpScreen.otpLength && !_isVerifying) _verifyOtp();
     } else {
       _focusNodes[filled].requestFocus();
     }
@@ -118,14 +167,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     }
     if (value.isNotEmpty) {
       Haptics.light();
-      if (index < 3) {
+      if (index < OtpScreen.otpLength - 1) {
         _focusNodes[index + 1].requestFocus();
       } else {
         _focusNodes[index].unfocus();
         // Auto-submit once all four digits are in — but only if a verification
         // isn't already running, so this can't race the Verify button and
         // submit the single-use OTP twice.
-        if (_enteredOtp.length == 4 && !_isVerifying) {
+        if (_enteredOtp.length == OtpScreen.otpLength && !_isVerifying) {
           _verifyOtp();
         }
       }
@@ -142,8 +191,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (_isVerifying) return;
 
     final enteredOtp = _enteredOtp;
-    if (enteredOtp.length < 4) {
-      _showSnackBar(AppSnackbarType.warning, 'Please enter the 4-digit code');
+    if (enteredOtp.length < OtpScreen.otpLength) {
+      _showSnackBar(
+          AppSnackbarType.warning, 'Please enter the ${OtpScreen.otpLength}-digit code');
       return;
     }
 
@@ -296,7 +346,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Enter the 4-digit code sent to +91 ${widget.phoneNumber}',
+                      'Enter the ${OtpScreen.otpLength}-digit code sent to +91 ${widget.phoneNumber}',
                       style: TextStyle(fontSize: 13.5, color: secondaryColor, height: 1.3),
                     ),
                   ],
@@ -314,13 +364,16 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               // unchanged.
               AutofillGroup(
                 child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 36.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(4, (index) {
+                  children: List.generate(OtpScreen.otpLength, (index) {
                     final isFocused = _focusNodes[index].hasFocus;
+                    // Width follows the box count so six fit a 360dp screen
+                    // without overflowing; the design (radius, border, focus
+                    // glow, height) is untouched.
                     return Container(
-                      width: 58,
+                      width: OtpScreen.otpLength > 4 ? 46 : 58,
                       height: 60,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
@@ -361,7 +414,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                           // "1" before onChanged ever saw it. Each box still
                           // displays a single digit — _fillFromAutofill
                           // normalises straight away.
-                          maxLength: 4,
+                          maxLength: OtpScreen.otpLength,
                           cursorColor: AppColors.primary,
                           style: TextStyle(
                             fontSize: 22,

@@ -23,6 +23,11 @@ class OtpBottomSheetContent extends StatefulWidget {
 }
 
 class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
+  /// Must match the backend's drop OTP: `order.helpers.js` generates
+  /// `Math.floor(1000 + Math.random() * 9000)` — always 4 digits. The sheet
+  /// used to draw 6 boxes, which could never be filled.
+  static const _otpLength = 4;
+
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -37,7 +42,7 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
 
   void _onTextChanged() {
     final text = _controller.text;
-    if (text.length == 4) {
+    if (text.length == _otpLength) {
       HapticService.medium();
       Navigator.of(context).pop(text);
     } else {
@@ -90,7 +95,7 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                       style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.sp, color: Colors.black87),
                     ),
                     Text(
-                      'Ask ${widget.customerName.isNotEmpty ? widget.customerName : "customer"} for 4-digit code',
+                      'Ask ${widget.customerName.isNotEmpty ? widget.customerName : "customer"} for $_otpLength-digit code',
                       style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
                     ),
                   ],
@@ -120,7 +125,7 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                   controller: _controller,
                   focusNode: _focusNode,
                   keyboardType: TextInputType.number,
-                  maxLength: 4,
+                  maxLength: _otpLength,
                   autofocus: true,
                   decoration: const InputDecoration(counterText: ''),
                 ),
@@ -131,17 +136,18 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                 behavior: HitTestBehavior.opaque,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(4, (index) {
+                  children: List.generate(_otpLength, (index) {
                     final char = index < text.length ? text[index] : '';
-                    final isFocused = index == text.length || (index == 3 && text.length == 4);
+                    final isFocused = index == text.length ||
+                        (index == _otpLength - 1 && text.length == _otpLength);
 
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      width: 54.w,
-                      height: 58.h,
+                      width: 42.w,
+                      height: 52.h,
                       decoration: BoxDecoration(
                         color: char.isNotEmpty ? const Color(0xFFF0FDF4) : Colors.grey[50],
-                        borderRadius: BorderRadius.circular(16.r),
+                        borderRadius: BorderRadius.circular(14.r),
                         border: Border.all(
                           color: isFocused
                               ? const Color(0xFF1EBE5D)
@@ -151,7 +157,7 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                         boxShadow: isFocused
                             ? [
                                 BoxShadow(
-                                  color: const Color(0xFF1EBE5D).withOpacity(0.2),
+                                  color: const Color(0xFF1EBE5D).withValues(alpha: 0.2),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 )
@@ -162,7 +168,7 @@ class _OtpBottomSheetContentState extends State<OtpBottomSheetContent> {
                       child: Text(
                         char,
                         style: TextStyle(
-                          fontSize: 24.sp,
+                          fontSize: 22.sp,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF1E1E1E),
                         ),

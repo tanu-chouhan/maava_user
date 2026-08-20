@@ -131,6 +131,7 @@ export function buildIncomingOrderPushData(order, payload, acceptanceDeadlineAt)
     orderId: s(order?._id),
     orderMongoId: s(order?._id),
     orderDisplayId: s(order?.order_id || order?._id),
+    vertical: s(order?.vertical || payload?.vertical || ''),
     restaurantName: s(payload?.restaurantName),
     restaurantAddress: s(payload?.restaurantAddress),
     customerAddress: s(payload?.customerAddress),
@@ -255,9 +256,16 @@ function orderCollectsCash(order) {
   return method === 'cash' || method === 'razorpay_qr';
 }
 
+/** Does a rider's chosen service cover this order's vertical? A missing choice
+ *  (riders registered before the field existed) means 'both'. */
+export function partnerServesVertical(serviceType, vertical) {
+  if (!vertical) return true;
+  return !serviceType || serviceType === 'both' || serviceType === vertical;
+}
+
 async function listNearbyOnlineDeliveryPartners(
   restaurantId,
-  { maxKm = 15, limit = 25 } = {},
+  { maxKm = 15, limit = 25, vertical = null } = {},
 ) {
   const rId = (restaurantId?._id || restaurantId).toString();
   const restaurant = await FoodRestaurant.findById(rId)
@@ -273,7 +281,7 @@ async function listNearbyOnlineDeliveryPartners(
   const allOnline = await FoodDeliveryPartner.find({
     availabilityStatus: "online",
   })
-    .select("_id status lastLat lastLng lastLocationAt name")
+    .select("_id status lastLat lastLng lastLocationAt name serviceType")
     .lean();
 
   const scored = [];
@@ -297,6 +305,7 @@ async function listNearbyOnlineDeliveryPartners(
   let droppedStale = 0;
   for (const p of allOnline) {
     if (!allowedStatuses.includes(p.status)) continue;
+    if (!partnerServesVertical(p.serviceType, vertical)) continue;
 
     // No coordinates at all â†’ genuinely unplaceable, must skip (never score as 999).
     if (p.lastLat == null || p.lastLng == null) {
@@ -417,7 +426,7 @@ export async function tryAutoAssign(orderId, options = {}) {
     const radiusBands = await resolveDispatchRadiusBands();
     const maxKm = radiusBands[Math.min(Math.max(attempt, 1), radiusBands.length) - 1];
 
-    const searchOptions = { maxKm, limit: 15 };
+    const searchOptions = { maxKm, limit: 15, vertical: order.vertical };
     const { partners } = await listNearbyOnlineDeliveryPartners(order.restaurantId, searchOptions);
     const busyPartnerIds = await getBusyDeliveryPartnerIds();
 

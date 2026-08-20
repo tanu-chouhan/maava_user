@@ -48,6 +48,14 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   String _vehicleType = 'bike';
   final _vehicleTypes = const ['bike', 'scooter', 'bicycle', 'car'];
 
+  /// Which vertical(s) the partner wants to deliver for.
+  String _serviceType = 'both';
+  static const _serviceOptions = [
+    ('food', 'Restaurant Delivery', 'Deliver food orders from restaurants'),
+    ('quick', 'Quick Commerce / Mart Delivery', 'Deliver grocery & mart orders'),
+    ('both', 'Both Restaurant & Mart Delivery', 'Receive orders from both'),
+  ];
+
   File? _profilePhoto;
   File? _aadharPhoto;
   File? _panPhoto;
@@ -135,6 +143,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       'address': _addressController.text.trim(),
       'city': _cityController.text.trim(),
       'state': _stateController.text.trim(),
+      'serviceType': _serviceType,
       'vehicleType': _vehicleType,
       'vehicleName': _vehicleNameController.text.trim(),
       'vehicleNumber': _vehicleNumberController.text.trim().toUpperCase(),
@@ -221,6 +230,34 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   Expanded(child: _textField(_stateController, 'State')),
                 ],
               ),
+
+              const AuthSectionTitle('Delivery service'),
+              Text(
+                'What type of delivery do you want to work with?',
+                style: TextStyle(fontSize: 13.sp, color: Colors.grey[600]),
+              ),
+              SizedBox(height: 8.h),
+              for (final (value, label, caption) in _serviceOptions)
+                RadioListTile<String>(
+                  value: value,
+                  groupValue: _serviceType,
+                  onChanged: (v) =>
+                      setState(() => _serviceType = v ?? _serviceType),
+                  title: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    caption,
+                    style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  activeColor: AppTheme.primaryColor,
+                ),
 
               const AuthSectionTitle('Vehicle details'),
               DropdownButtonFormField<String>(

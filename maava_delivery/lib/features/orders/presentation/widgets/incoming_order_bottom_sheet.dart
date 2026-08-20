@@ -79,7 +79,8 @@ class IncomingOrderBottomSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Text(
-                  'NEW ORDER',
+                  'NEW ${order.serviceLabel?.toUpperCase() ?? ''} ORDER'
+                      .replaceAll('  ', ' '),
                   style: TextStyle(
                     color: const Color(0xFFFF5A00),
                     fontSize: 10.sp,
@@ -218,7 +219,9 @@ class IncomingOrderBottomSheet extends StatelessWidget {
                   children: [
                     _buildTimelineItem(
                       dotColor: const Color(0xFFFF5A00),
-                      title: 'RESTAURANT PICKUP',
+                      title: order.isMartOrder
+                          ? 'MART PICKUP'
+                          : 'RESTAURANT PICKUP',
                       name: order.restaurant.name,
                       address: order.restaurant.address,
                       isFirst: true,

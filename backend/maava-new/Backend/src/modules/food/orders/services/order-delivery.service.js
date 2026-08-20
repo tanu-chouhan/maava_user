@@ -36,6 +36,7 @@ import {
 } from './order.helpers.js';
 const DELIVERY_ORDER_BASE_SELECT = [
   '_id',
+  'vertical',
   'order_id',
   'orderId',
   'userId',
@@ -235,6 +236,19 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
   const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
   const hasActiveDelivery = await partnerHasActiveDelivery(deliveryPartnerId);
 
+  const partner = await FoodDeliveryPartner.findById(partnerId)
+    .select('serviceType lastLat lastLng lastLocationAt')
+    .lean();
+
+  // Riders only see unassigned offers from the vertical(s) they signed up to
+  // serve. Applies to the open-offers branch alone: an order already assigned
+  // to this rider must always be visible, whatever their current selection.
+  const serviceType = partner?.serviceType;
+  const verticalFilter =
+    serviceType === 'food' || serviceType === 'quick'
+      ? { vertical: serviceType }
+      : {};
+
   const filter = hasActiveDelivery
     ? {
         'dispatch.deliveryPartnerId': partnerId,
@@ -244,6 +258,7 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
     : {
         $or: [
           {
+            ...verticalFilter,
             'dispatch.status': 'unassigned',
             'dispatch.offeredTo': {
               $not: {
@@ -290,10 +305,6 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
   );
 
   if (!hasActiveDelivery) {
-    const partner = await FoodDeliveryPartner.findById(partnerId)
-      .select('lastLat lastLng lastLocationAt')
-      .lean();
-
     const MAX_OFFER_KM = 20; // slightly wider than dispatch radius (15km)
     const partnerLat = partner?.lastLat;
     const partnerLng = partner?.lastLng;

@@ -218,8 +218,56 @@ class _AddressSelectionScreenState
     });
   }
 
+  /// Manual entry produces no pin, but the backend requires coordinates on
+  /// every address (zone checks, delivery distance, rider dispatch). So a
+  /// fully-typed address is forward-geocoded here at save time — the map, GPS
+  /// and search stay optional rather than mandatory.
+  Future<bool> _geocodeTypedAddress() async {
+    final query = [
+      _street.text.trim(),
+      _details.text.trim(),
+      _city.text.trim(),
+      _state.text.trim(),
+      _zip.text.trim(),
+    ].where((part) => part.isNotEmpty).join(', ');
+    if (query.isEmpty) return false;
+
+    try {
+      final place = await ref.read(placeRepositoryProvider).geocodeAddress(query);
+      if (place == null || !mounted) return false;
+      setState(() {
+        _latitude = place.latitude;
+        _longitude = place.longitude;
+        _pinAddress = place.formattedAddress;
+      });
+      return true;
+    } catch (e) {
+      AppLogger.error('forward geocode failed', error: e);
+      return false;
+    }
+  }
+
   Future<void> _save() async {
-    final errors = _validator.validate(_address);
+    var errors = _validator.validate(_address);
+
+    // No pin yet, but the rest of the form is complete — locate the typed
+    // address instead of bouncing the user to the map.
+    if (errors.length == 1 && errors.containsKey('location')) {
+      setState(() => _saving = true);
+      final located = await _geocodeTypedAddress();
+      if (!mounted) return;
+      setState(() => _saving = false);
+      if (located) {
+        errors = _validator.validate(_address);
+      } else {
+        AppToast.error(
+          context,
+          'We could not locate this address. Check the spelling and pincode, '
+          'or pin it on the map.',
+        );
+      }
+    }
+
     setState(() => _errors = errors);
     if (errors.isNotEmpty) {
       AppToast.error(context, errors.values.first);

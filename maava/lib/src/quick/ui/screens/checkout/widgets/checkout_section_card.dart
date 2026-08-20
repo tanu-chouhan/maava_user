@@ -37,7 +37,7 @@ class CheckoutSectionCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: context.colors.surface,
-        borderRadius: AppRadii.rLg,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: highlight ? context.semantic.danger : context.semantic.border,
           width: highlight ? 1.4 : 1,

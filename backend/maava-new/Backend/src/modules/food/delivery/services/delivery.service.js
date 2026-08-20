@@ -26,10 +26,10 @@ const savePartnerFcmToken = async (partnerId, fcmToken, platform) => {
 };
 
 export const registerDeliveryPartner = async (payload, files, rawBody = {}) => {
-    const { 
-        name, phone, email, countryCode, address, city, state, 
+    const {
+        name, phone, email, countryCode, address, city, state,
         vehicleType, vehicleName, vehicleNumber, drivingLicenseNumber, panNumber, aadharNumber,
-        fcmToken, platform 
+        serviceType, fcmToken, platform
     } = payload;
     const refRaw = typeof payload?.ref === 'string' ? String(payload.ref).trim() : '';
 
@@ -144,6 +144,7 @@ export const registerDeliveryPartner = async (payload, files, rawBody = {}) => {
         drivingLicenseNumber,
         panNumber,
         aadharNumber,
+        serviceType: serviceType || 'both',
         status: 'pending',
         ...images,
         ...(Object.keys(customFields).length ? { customFields } : {}),
@@ -198,8 +199,10 @@ export const updateDeliveryPartnerProfile = async (userId, payload, files) => {
     const {
         name, countryCode, address, city, state,
         vehicleType, vehicleName, vehicleNumber, drivingLicenseNumber, panNumber, aadharNumber,
-        fcmToken, platform
+        serviceType, fcmToken, platform
     } = payload;
+
+    if (serviceType !== undefined) partner.serviceType = serviceType;
 
     if (name) partner.name = name;
     if (countryCode !== undefined) partner.countryCode = countryCode;
