@@ -784,7 +784,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     return Row(
       children: [
         Expanded(
-          child: Container(
+          child: GestureDetector(
+            onTap: _earningsLoading ? null : _showEarningsBreakdown,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
             padding: EdgeInsets.all(12.r),
             decoration: BoxDecoration(
               color: const Color(0xFFE8F6EF),
@@ -825,7 +828,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         ),
         SizedBox(width: 12.w),
         Expanded(
-          child: Container(
+          child: GestureDetector(
+            onTap: _earningsLoading ? null : _showOrdersBreakdown,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
             padding: EdgeInsets.all(12.r),
             decoration: BoxDecoration(
               color: const Color(0xFFFFF2E6),

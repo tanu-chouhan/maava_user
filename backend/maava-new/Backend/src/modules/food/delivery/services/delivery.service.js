@@ -566,6 +566,32 @@ export const getDeliveryPartnerWallet = async (deliveryPartnerId) => {
 };
 
 // ----- Delivery partner earnings summary (Pocket / requests page) -----
+/**
+ * Folds the per-vertical aggregation rows into Food/Mart buckets plus totals.
+ *
+ * Anything that is not explicitly 'quick' counts as Food -- including the null
+ * bucket for pre-merge orders -- so a stray vertical value can never silently
+ * vanish from the totals. The totals are derived from the buckets rather than
+ * summed separately, which is what guarantees total === food + mart for every
+ * input the rider app can ever be shown.
+ */
+export const summarizeEarningsByVertical = (rows = []) => {
+    const byVertical = {
+        food: { earnings: 0, orders: 0 },
+        quick: { earnings: 0, orders: 0 }
+    };
+    for (const row of rows || []) {
+        const bucket = row?._id === 'quick' ? byVertical.quick : byVertical.food;
+        bucket.earnings += Number(row?.earnings) || 0;
+        bucket.orders += Number(row?.orders) || 0;
+    }
+    return {
+        byVertical,
+        totalEarnings: byVertical.food.earnings + byVertical.quick.earnings,
+        totalOrders: byVertical.food.orders + byVertical.quick.orders
+    };
+};
+
 export const getDeliveryPartnerEarnings = async (deliveryPartnerId, query = {}) => {
     if (!deliveryPartnerId || !mongoose.Types.ObjectId.isValid(deliveryPartnerId)) {
         throw new ValidationError('Delivery partner not found');
@@ -599,25 +625,39 @@ export const getDeliveryPartnerEarnings = async (deliveryPartnerId, query = {}) 
         match['deliveryState.deliveredAt'] = { $gte: range.start, $lte: range.end };
     }
 
-    const [totalOrders, agg] = await Promise.all([
-        FoodOrder.countDocuments(match),
-        FoodOrder.aggregate([
-            { $match: match },
-            {
-                $group: {
-                    _id: null,
-                    totalEarnings: { $sum: { $ifNull: ['$riderEarning', 0] } }
-                }
+    // Grouped by vertical so the rider app can show Food and Mart separately.
+    // The counts come from the same pipeline rather than a second
+    // countDocuments, which is what keeps the split and the total consistent by
+    // construction: the total is literally food + quick, never an independently
+    // computed number that could disagree with its own parts.
+    //
+    // Delivery routes run CROSS_VERTICAL and the vertical plugin does not touch
+    // aggregations, so both verticals are present here.
+    const agg = await FoodOrder.aggregate([
+        { $match: match },
+        {
+            $group: {
+                // Orders predating the vertical field are Food -- that is the
+                // same assumption orderSourceTitle() makes for their push title.
+                _id: { $ifNull: ['$vertical', 'food'] },
+                earnings: { $sum: { $ifNull: ['$riderEarning', 0] } },
+                orders: { $sum: 1 }
             }
-        ])
+        }
     ]);
 
-    const totalEarnings = Number(agg?.[0]?.totalEarnings) || 0;
+    const { byVertical, totalEarnings, totalOrders } = summarizeEarningsByVertical(agg);
 
-    // Frontend only strongly relies on totalEarnings + totalOrders.
+    // totalEarnings/totalOrders keep their existing meaning and position so
+    // older app builds are unaffected; byVertical is additive.
     const summary = {
         totalEarnings,
         totalOrders,
+        foodEarnings: byVertical.food.earnings,
+        martEarnings: byVertical.quick.earnings,
+        foodOrders: byVertical.food.orders,
+        martOrders: byVertical.quick.orders,
+        byVertical,
         totalHours: 0,
         totalMinutes: 0,
         orderEarning: totalEarnings,
@@ -725,6 +765,9 @@ const toTripDto = (order) => {
         id: order?._id,
         _id: order?._id,
         orderId: order?.orderId || order?._id,
+        // Lets each row in trip history and the wallet ledger say which brand it
+        // came from. Absent on pre-merge orders, which were all Food.
+        vertical: order?.vertical === 'quick' ? 'quick' : 'food',
         status,
         restaurantName,
         restaurant: restaurantName,

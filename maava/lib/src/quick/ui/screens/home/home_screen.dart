@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../presentation/branding/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../domain/model/banner.dart';
 import '../../../navigation/route_paths.dart';
 import '../../common/widgets/misc/section_header.dart';
 import '../../common/widgets/misc/sound_refresh_indicator.dart';
@@ -19,11 +18,10 @@ import 'home_state.dart';
 import 'widgets/deal_of_the_day_row.dart';
 import 'widgets/delivery_header.dart';
 import 'widgets/feature_highlights_row.dart';
-import 'widgets/promo_banners_two_column_row.dart';
+import 'widgets/housefull_sale_banner.dart';
 import 'widgets/shop_by_category_row.dart';
 import 'widgets/value_props_strip.dart';
 import 'widgets/active_order_card.dart';
-import 'widgets/banner_carousel.dart';
 import 'widgets/product_row.dart';
 import 'widgets/shop_by_brand_row.dart';
 
@@ -138,25 +136,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // 3. Hero Promo Banner Carousel (Mint Green Gradient Hero Card)
+          // 2. Housefull Sale Banner matching reference design with active theme colors
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: BannerCarousel(
-                banners: state.heroBanners.isNotEmpty
-                    ? state.heroBanners
-                    : state.topBanners,
-                onTap: (banner) => _openBanner(context, banner),
+            child: HousefullSaleBanner(
+              dealProduct: _dealProducts(state).isNotEmpty ? _dealProducts(state).first : null,
+              categories: state.categories,
+              onCrazyDealsTap: () => context.push(
+                RoutePaths.productListing,
+                extra: const ProductListingArgs(title: 'Deal of the day'),
               ),
+              onCategoryCardTap: (catId) =>
+                  context.push(RoutePaths.subCategoryOf(catId)),
             ),
           ),
 
-          // 4. Trust / Service Promises Strip (Farm Fresh, Free Delivery, Secure Payment, Easy Returns)
+          // 3. Trust / Service Promises Strip (Farm Fresh, Free Delivery, Secure Payment, Easy Returns)
           const SliverToBoxAdapter(
             child: TrustStrip(),
           ),
 
-          // 5. SHOP BY CATEGORY (Horizontal category cards with scroll arrow)
+          // 4. SHOP BY CATEGORY (Horizontal category cards with scroll arrow)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(top: 2, bottom: 2),
@@ -167,18 +166,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 onCategoryTap: (catId) =>
                     context.push(RoutePaths.subCategoryOf(catId)),
               ),
-            ),
-          ),
-
-          // 6. 2-Column Promotional Banners (Weekend Super Saver & 30-Min Fast Delivery)
-          SliverToBoxAdapter(
-            child: PromoBannersTwoColumnRow(
-              topBanners: state.topBanners.isNotEmpty
-                  ? state.topBanners
-                  : state.heroBanners,
-              onBannerTap: (banner) => _openBanner(context, banner),
-              onShopNow: () => context.go(RoutePaths.categories),
-              onOrderNow: () => context.push(RoutePaths.productListing),
             ),
           ),
 
@@ -274,38 +261,5 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (section.id == _dealSectionId) return section.products;
     }
     return const [];
-  }
-
-  void _openBanner(BuildContext context, PromoBanner banner) {
-    switch (banner.target) {
-      case BannerTarget.offers:
-        context.push(RoutePaths.coupons);
-        break;
-      case BannerTarget.category:
-        if (banner.targetId.isNotEmpty) {
-          context.push(RoutePaths.subCategoryOf(banner.targetId));
-        } else {
-          context.go(RoutePaths.categories);
-        }
-        break;
-      case BannerTarget.restaurant:
-        context.push(
-          RoutePaths.productListing,
-          extra: ProductListingArgs(
-            title: banner.title,
-            sellerId: banner.targetId,
-          ),
-        );
-        break;
-      case BannerTarget.products:
-      case BannerTarget.none:
-        context.push(
-          RoutePaths.productListing,
-          extra: ProductListingArgs(
-            title: banner.title.isEmpty ? 'Featured Products' : banner.title,
-          ),
-        );
-        break;
-    }
   }
 }
