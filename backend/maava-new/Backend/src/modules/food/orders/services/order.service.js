@@ -75,6 +75,26 @@ let commissionRulesCache = null;
 let commissionRulesLoadedAt = 0;
 const ORDER_ACCEPTANCE_WINDOW_SECONDS = 240;
 
+/**
+ * How long after placing an order the customer may still cancel it themselves.
+ * The apps mirror this value to draw their countdown; this constant is the one
+ * that actually decides, so change it here.
+ */
+export const CANCELLATION_WINDOW_MS = 60_000;
+
+/**
+ * Whether an order placed at [createdAt] may still be cancelled at [now].
+ *
+ * An order with no createdAt is allowed through rather than blocked: the status
+ * check upstream is what actually guards it, and refusing on a missing
+ * timestamp would strand legacy rows nobody can cancel.
+ */
+export const isWithinCancellationWindow = (createdAt, now = Date.now()) => {
+    const placedAtMs = createdAt?.getTime?.() ?? Date.parse(createdAt ?? '');
+    if (!Number.isFinite(placedAtMs)) return true;
+    return now - placedAtMs <= CANCELLATION_WINDOW_MS;
+};
+
 function normalizeAcceptanceWindowSeconds(minutes) {
   const numeric = Number(minutes);
   if (!Number.isFinite(numeric)) return ORDER_ACCEPTANCE_WINDOW_SECONDS;
@@ -1461,6 +1481,17 @@ export async function cancelOrder(orderId, userId, reason) {
   const allowed = ["created"];
   if (!allowed.includes(order.orderStatus))
     throw new ValidationError("Order cannot be cancelled");
+
+  // Authoritative cancellation window. The apps render a countdown from the same
+  // createdAt, but that is only a courtesy — the window is decided here, off the
+  // server's own clock, so a direct API call or a device with a wrong time
+  // cannot cancel late. Slow networks fail closed for the same reason: a request
+  // that leaves in time but lands after the window is refused.
+  if (!isWithinCancellationWindow(order.createdAt)) {
+    throw new ValidationError(
+      "The 1-minute cancellation window for this order has passed",
+    );
+  }
 
   const from = order.orderStatus;
   order.orderStatus = "cancelled_by_user";

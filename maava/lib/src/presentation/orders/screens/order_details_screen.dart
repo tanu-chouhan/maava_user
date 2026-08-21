@@ -9,6 +9,7 @@ import '../../../data/models/order_model.dart';
 import '../../branding/app_colors.dart';
 import '../../cart/utils/cart_restaurant_guard.dart';
 import '../../cart/viewmodels/cart_viewmodel.dart';
+import '../../../shared/orders/cancel_window.dart';
 import '../../common_widgets/app_snackbar.dart';
 import '../../common_widgets/skeleton_loading.dart';
 import '../../navigation/route_names.dart';
@@ -192,22 +193,51 @@ class OrderDetailsScreen extends ConsumerWidget {
               ),
               child: SafeArea(
                 child: order.isActive
-                    ? Row(
+                    ? _tickWhileCancellable(
+                        order: order,
+                        onExpired: () =>
+                            ref.invalidate(orderDetailProvider(orderId)),
+                        builder: (context, remaining) => Row(
                         children: [
+                          // `canCancel` already folds in the window, and this
+                          // subtree rebuilds every second, so the button and the
+                          // spacer disappear together the moment it closes.
                           if (order.canCancel)
                             Expanded(
                               flex: 1,
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.redAccent,
-                                  side: const BorderSide(color: Colors.redAccent),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                ),
-                                onPressed: () => _showCancelDialog(context, ref),
-                                child: const Text(
-                                  'CANCEL',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Cancel available for '
+                                    '${formatCancelRemaining(remaining)}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.redAccent,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.redAccent,
+                                      side: const BorderSide(
+                                        color: Colors.redAccent,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    onPressed: () =>
+                                        _showCancelDialog(context, ref),
+                                    child: const Text(
+                                      'CANCEL',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           if (order.canCancel) const SizedBox(width: 12),
@@ -234,6 +264,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                             ),
                           ),
                         ],
+                        ),
                       )
                     : SizedBox(
                         height: 44,
@@ -258,4 +289,26 @@ class OrderDetailsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Rebuilds [builder] once a second while the order is still inside its
+/// self-cancellation window, and exactly once otherwise.
+///
+/// The ticker is mounted only for orders that could still be cancelled — an
+/// out-for-delivery order would otherwise run a pointless timer for its whole
+/// life just to redraw a bar that cannot change.
+Widget _tickWhileCancellable({
+  required OrderModel order,
+  required VoidCallback onExpired,
+  required Widget Function(BuildContext context, Duration remaining) builder,
+}) {
+  final deadline = order.cancelWindowEnd;
+  if (order.orderStatus != 'created' || deadline == null) {
+    return Builder(builder: (context) => builder(context, Duration.zero));
+  }
+  return CancelWindowCountdown(
+    deadline: deadline,
+    onExpired: onExpired,
+    builder: builder,
+  );
 }

@@ -8,6 +8,7 @@ import '../../../../core/error/result.dart';
 import '../../../auth/application/auth_controller.dart';
 import '../../../auth/application/auth_state.dart';
 import '../../../auth/data/models/delivery_partner.dart';
+import '../../application/service_type_controller.dart';
 import '../../data/profile_repository.dart';
 
 class DriverDetailsScreen extends ConsumerWidget {
@@ -102,7 +103,6 @@ class DriverDetailsScreen extends ConsumerWidget {
             _buildVehicleCard(theme, textColor, user),
             SizedBox(height: 30.h),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'DELIVERY SERVICES',
@@ -113,23 +113,10 @@ class DriverDetailsScreen extends ConsumerWidget {
                     letterSpacing: 1.2,
                   ),
                 ),
-                TextButton(
-                  onPressed: user == null
-                      ? null
-                      : () => _openServiceTypeDialog(context, ref, user),
-                  child: Text(
-                    'EDIT',
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
               ],
             ),
             SizedBox(height: 12.h),
-            _buildServiceTypeCard(theme, textColor, user),
+            _buildServiceTypeCard(theme, textColor, ref),
             SizedBox(height: 30.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -475,9 +462,15 @@ class DriverDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildServiceTypeCard(ThemeData theme, Color textColor, DeliveryPartner? user) {
+  /// Two independent switches over the single serviceType value:
+  /// Food ON/OFF and Mart ON/OFF, persisted locally and synced to the
+  /// profile so the backend's dispatch filter honours them.
+  Widget _buildServiceTypeCard(ThemeData theme, Color textColor, WidgetRef ref) {
+    final serviceType = ref.watch(serviceTypeControllerProvider);
+    final controller = ref.read(serviceTypeControllerProvider.notifier);
+
     return Container(
-      padding: EdgeInsets.all(16.r),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(20.r),
@@ -489,91 +482,62 @@ class DriverDetailsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            padding: EdgeInsets.all(12.r),
-            decoration: BoxDecoration(
-              color: theme.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16.r),
-            ),
-            child: Icon(
-              Icons.delivery_dining_rounded,
+          SwitchListTile(
+            value: foodReceives(serviceType),
+            onChanged: (v) => controller.setFood(v),
+            secondary: Icon(
+              Icons.restaurant_rounded,
               color: theme.primaryColor,
-              size: 28.sp,
+              size: 24.sp,
             ),
-          ),
-          SizedBox(width: 16.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ORDER TYPES YOU RECEIVE',
-                  style: TextStyle(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[500],
-                  ),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  user?.serviceTypeLabel ?? 'Not set',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-              ],
+            title: Text(
+              'Food Orders',
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
             ),
+            subtitle: Text(
+              'Maava Food restaurant deliveries',
+              style: TextStyle(fontSize: 11.sp, color: Colors.grey[600]),
+            ),
+            activeColor: theme.primaryColor,
           ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openServiceTypeDialog(
-    BuildContext context,
-    WidgetRef ref,
-    DeliveryPartner user,
-  ) async {
-    const options = [
-      ('food', 'Restaurant Delivery', Icons.restaurant_rounded),
-      ('quick', 'Mart Delivery', Icons.local_grocery_store_rounded),
-      ('both', 'Both Restaurant & Mart', Icons.all_inclusive_rounded),
-    ];
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: const Text('Delivery services'),
-        children: [
-          for (final (value, label, icon) in options)
-            RadioListTile<String>(
-              value: value,
-              groupValue: user.serviceType,
-              onChanged: (v) => Navigator.of(dialogContext).pop(v),
-              title: Text(label),
-              secondary: Icon(icon),
+          Divider(height: 1, indent: 16.w, endIndent: 16.w),
+          SwitchListTile(
+            value: martReceives(serviceType),
+            onChanged: (v) => controller.setMart(v),
+            secondary: Icon(
+              Icons.local_grocery_store_rounded,
+              color: theme.primaryColor,
+              size: 24.sp,
+            ),
+            title: Text(
+              'Mart Orders',
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            subtitle: Text(
+              'HiberMart quick-commerce deliveries',
+              style: TextStyle(fontSize: 11.sp, color: Colors.grey[600]),
+            ),
+            activeColor: theme.primaryColor,
+          ),
+          if (serviceType == 'none')
+            Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 10.h),
+              child: Text(
+                'Both order types are off — you will not receive any new orders.',
+                style: TextStyle(fontSize: 11.sp, color: Colors.redAccent),
+              ),
             ),
         ],
-      ),
-    );
-    if (selected == null || selected == user.serviceType) return;
-
-    final result = await ref
-        .read(profileRepositoryProvider)
-        .updateProfile({'serviceType': selected});
-    if (!context.mounted) return;
-    result.when(
-      success: (_) {
-        ref.read(authControllerProvider.notifier).checkAuthStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Delivery services updated')),
-        );
-      },
-      failure: (e) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
       ),
     );
   }

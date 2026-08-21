@@ -63,9 +63,18 @@ object NewOrderNotifier {
 
         ensureChannel(context)
 
+        // Prefer the server's ready-made title; derive from the vertical when
+        // the push predates it, so the alert always names the brand it can.
+        val title = data["title"]?.takeIf { it.isNotBlank() }
+            ?: when (data["vertical"]) {
+                "quick" -> "New order from HiberMart"
+                "food" -> "New order from Maava Food"
+                else -> "🔔 New Order Received!"
+            }
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("🔔 New Order Received!")
+            .setContentTitle(title)
             .setContentText(body.lineSequence().first())
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)

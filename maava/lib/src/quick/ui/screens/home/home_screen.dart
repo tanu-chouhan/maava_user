@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/model/banner.dart';
 import '../../../navigation/route_paths.dart';
-import '../../common/smart_scan.dart';
-import '../../common/widgets/inputs/search_bar_widget.dart';
 import '../../common/widgets/misc/section_header.dart';
 import '../../common/widgets/misc/sound_refresh_indicator.dart';
 import '../../common/widgets/states/error_state_widget.dart';
@@ -23,7 +20,6 @@ import 'widgets/delivery_header.dart';
 import 'widgets/feature_highlights_row.dart';
 import 'widgets/promo_banners_two_column_row.dart';
 import 'widgets/shop_by_category_row.dart';
-import 'widgets/pinned_search_header.dart';
 import 'widgets/value_props_strip.dart';
 import 'widgets/active_order_card.dart';
 import 'widgets/banner_carousel.dart';
@@ -137,38 +133,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // already used exactly this.
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // 1. Top Bar: Delivery location, notification bell, profile icon
+          // 1. Top Header Section matching spec: Warm Orange Gradient, Delivery ETA, Address, Search Bar & Category Navigation Strip
           SliverToBoxAdapter(
-            child: const DeliveryHeader(),
-          ),
-
-          // 2. Search Bar + 10 Min Delivery Pill Row — PINNED.
-          //
-          // Everything else scrolls; this stays put so search is reachable from
-          // anywhere in the feed. The location header above is a normal sliver
-          // and deliberately scrolls away.
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: PinnedSearchHeader(
-              extent: 60,
-              child: Padding(
-              padding: EdgeInsets.fromLTRB(AppSpacing.gutter, 2, AppSpacing.gutter, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SearchBarWidget(
-                      readOnly: true,
-                      categories: state.categories.map((c) => c.name).toList(),
-                      onTap: () => context.push(RoutePaths.search),
-                      onScanTap: () => SmartScan.run(context, ref),
-                      onMicTap: () => context.push('${RoutePaths.search}?voice=1'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _build10MinDeliveryBadge(),
-                ],
-              ),
-              ),
+            child: DeliveryHeader(
+              categories: state.categories,
+              onCategoryTap: (catId) =>
+                  context.push(RoutePaths.subCategoryOf(catId)),
+              onAllTap: () => context.go(RoutePaths.categories),
             ),
           ),
 
@@ -308,67 +279,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (section.id == _dealSectionId) return section.products;
     }
     return const [];
-  }
-
-  Widget _build10MinDeliveryBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
-      decoration: BoxDecoration(
-        color: context.semantic.accent,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.bolt_rounded,
-            color: Color(0xFFFACC15),
-            size: 20,
-          ),
-          const SizedBox(width: 3),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '10 Min',
-                style: GoogleFonts.outfit(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  height: 1.0,
-                ),
-              ),
-              Text(
-                'Delivery',
-                style: GoogleFonts.inter(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  color: context.semantic.border,
-                  height: 1.0,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 4),
-          const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            size: 16,
-            color: Colors.white,
-          ),
-        ],
-      ),
-    );
   }
 
   void _openBanner(BuildContext context, PromoBanner banner) {

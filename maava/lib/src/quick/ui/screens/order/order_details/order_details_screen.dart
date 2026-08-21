@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../../shared/orders/cancel_window.dart';
 
 import '../../../../core/extensions/num_extensions.dart';
 import '../../../../core/theme/app_radii.dart';
@@ -240,18 +241,33 @@ class OrderDetailsScreen extends ConsumerWidget {
                     tonal: false,
                     onPressed: () => context.push(RoutePaths.help),
                   ),
-                  if (order.status.isCancellable) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    SecondaryButton(
-                      label: 'Cancel order',
-                      icon: Icons.cancel_outlined,
-                      expand: true,
-                      tonal: false,
-                      destructive: true,
-                      isLoading: state.isMutating,
-                      onPressed: () => _cancel(context, ref),
+                  CancelWindowGate(
+                    placedAt: order.placedAt,
+                    statusAllows: order.status.isCancellable,
+                    onExpired: () => ref.invalidate(orderDetailProvider(orderId)),
+                    builder: (context, remaining) => Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          'Cancel order available for '
+                          '${formatCancelRemaining(remaining)}',
+                          style: context.text.labelMedium!
+                              .copyWith(color: context.semantic.danger),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        SecondaryButton(
+                          label: 'Cancel order',
+                          icon: Icons.cancel_outlined,
+                          expand: true,
+                          tonal: false,
+                          destructive: true,
+                          isLoading: state.isMutating,
+                          onPressed: () => _cancel(context, ref),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),

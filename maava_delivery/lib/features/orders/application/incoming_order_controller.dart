@@ -7,6 +7,7 @@ import '../../../core/services/fcm_service.dart';
 import '../../../core/services/new_order_overlay_bridge.dart';
 import '../../../core/services/order_alert.dart';
 import '../../../core/services/socket_service.dart';
+import '../../profile/application/service_type_controller.dart';
 import '../data/models/delivery_order.dart';
 import '../data/orders_repository.dart';
 import 'orders_controller.dart';
@@ -130,6 +131,15 @@ class IncomingOrderController extends Notifier<DeliveryOrder?> {
     }
     if (state?.id == order.id) {
       offerLog('DROPPED ${order.id}: already on screen');
+      return;
+    }
+    // The rider's Food/Mart toggles. The backend's dispatch filter is the
+    // real enforcement (it never sends to a rider whose toggle is off); this
+    // guard covers the gap where a server-side offer predates a toggle flip.
+    final serviceType = ref.read(serviceTypeControllerProvider);
+    if (!serviceTypeAllows(serviceType, order.vertical)) {
+      offerLog('DROPPED ${order.id}: '
+          '${order.serviceLabel ?? 'unknown'} orders toggled off');
       return;
     }
     offerLog('SHOWING ${order.id} — ${order.orderCode} '

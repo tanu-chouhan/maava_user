@@ -150,10 +150,21 @@ object NewOrderOverlay {
         // difference between accepting and declining.
         val earning = data.firstNonZero("riderEarning", "earnings", "price")
 
+        // Which brand the pickup is for — the rider decides differently for a
+        // restaurant order than a mart run, so it leads the card.
+        val source = when (data["vertical"]) {
+            "quick" -> "HiberMart"
+            "food" -> "Maava Food"
+            else -> null
+        }
         root.html(
             R.id.headline,
             buildString {
-                append("Order ").append(display)
+                if (source != null) {
+                    append("Order from <b>").append(source).append("</b> • ").append(display)
+                } else {
+                    append("Order ").append(display)
+                }
                 if (earning.isNotEmpty()) {
                     append(" • <font color='#1E8E3E'><b>₹").append(earning)
                         .append("</b></font> earning")

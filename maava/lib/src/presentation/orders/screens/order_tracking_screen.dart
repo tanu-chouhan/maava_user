@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../shared/orders/cancel_window.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -192,8 +193,17 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                                       _StatusTimelineCard(order: order),
                                       // Cancel is offered only while the backend still
                                       // allows it (before the food is on its way).
-                                      if (order.canCancel)
-                                        _CancelButton(onCancel: _confirmCancel),
+                                      CancelWindowGate(
+                                        placedAt: order.createdAt,
+                                        statusAllows: order.isActive &&
+                                            order.orderStatus == 'created',
+                                        onExpired: _refresh,
+                                        builder: (context, remaining) =>
+                                            _CancelButton(
+                                          onCancel: _confirmCancel,
+                                          remaining: remaining,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -1122,11 +1132,32 @@ class _PendingBadge extends StatelessWidget {
 
 class _CancelButton extends StatelessWidget {
   final VoidCallback onCancel;
-  const _CancelButton({required this.onCancel});
+
+  /// Time left in the self-cancellation window, shown above the button so the
+  /// deadline is visible before it is missed rather than after.
+  final Duration remaining;
+
+  const _CancelButton({required this.onCancel, required this.remaining});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            'Cancel order available for ${formatCancelRemaining(remaining)}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFFF6464),
+            ),
+          ),
+        ),
+        SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
@@ -1138,6 +1169,8 @@ class _CancelButton extends StatelessWidget {
         icon: const Icon(Icons.close_rounded, color: Color(0xFFFF6464), size: 18),
         label: const Text('Cancel order', style: TextStyle(color: Color(0xFFFF6464), fontWeight: FontWeight.bold)),
       ),
+        ),
+      ],
     );
   }
 }

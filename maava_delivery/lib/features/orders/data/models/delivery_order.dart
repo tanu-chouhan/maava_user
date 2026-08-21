@@ -335,6 +335,14 @@ class DeliveryOrder {
         _ => null,
       };
 
+  /// Customer-facing brand the pickup belongs to, null when the wire didn't
+  /// say (payloads from a backend that predates the vertical field).
+  String? get brandName => switch (vertical) {
+        'quick' => 'HiberMart',
+        'food' => 'Maava Food',
+        _ => null,
+      };
+
   bool get isCashOnDelivery => paymentMethod == 'cash';
   bool get isPaid => paymentStatus == 'paid';
 

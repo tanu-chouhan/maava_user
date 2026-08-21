@@ -1,3 +1,4 @@
+import '../../shared/orders/cancel_window.dart';
 import '../../core/config/api_config.dart';
 
 /// One line item on a placed order.
@@ -419,10 +420,18 @@ class OrderModel {
     return 'Usually confirmed within ${mins}m ${secs}s';
   }
 
-  /// The backend rejects cancellation once the food is on its way.
+  /// The moment self-cancellation closes, or null when the order was never
+  /// eligible. Anchored to the server's [createdAt], so closing and reopening
+  /// the app resumes the countdown instead of restarting it.
+  DateTime? get cancelWindowEnd =>
+      createdAt == null ? null : cancelWindowEndsAt(createdAt!);
+
+  /// The backend allows self-cancellation only while the order is still
+  /// unaccepted (`created`) *and* inside the one-minute window. It used to list
+  /// `confirmed` and `preparing` too, which the server has always refused — the
+  /// button was there but every tap came back an error.
   bool get canCancel =>
-      isActive &&
-      const {'created', 'confirmed', 'preparing'}.contains(orderStatus);
+      isActive && orderStatus == 'created' && isCancelWindowOpen(createdAt);
 
   bool get hasRider => deliveryPartner != null && dispatchStatus == 'accepted';
   bool get showDropOtp => dropOtpRequired && !dropOtpVerified;

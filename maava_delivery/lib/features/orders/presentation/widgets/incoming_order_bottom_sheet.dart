@@ -79,8 +79,9 @@ class IncomingOrderBottomSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Text(
-                  'NEW ${order.serviceLabel?.toUpperCase() ?? ''} ORDER'
-                      .replaceAll('  ', ' '),
+                  order.brandName != null
+                      ? 'ORDER FROM ${order.brandName!.toUpperCase()}'
+                      : 'NEW ORDER',
                   style: TextStyle(
                     color: const Color(0xFFFF5A00),
                     fontSize: 10.sp,
