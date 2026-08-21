@@ -10,21 +10,15 @@ import '../../../common/widgets/misc/app_network_image.dart';
 
 /// "LOWEST PRICES EVER" section rail:
 ///
-/// - Section Background: Uses active default app theme color tint ([AppColors.primaryTint]) - no hardcoded orange!
-/// - Compact Card Dimensions: Reduced card width & height for a sleeker, space-efficient product grid.
+/// - Section Background: Uses active default app theme color tint ([AppColors.primaryTint]).
+/// - Image Area: Full coverage image ([BoxFit.cover]) with zero empty white margin around it.
+/// - Ultra-Compact Card Dimensions: Reduced card width (132) & height (228) for maximum space efficiency.
 /// - Product Card Layout:
-///   - Top Half: Crisp white image container box.
+///   - Top Half: 95px image container box completely covered by product image.
 ///   - Top-Left: Red discount pill badge ("20% OFF", "17% OFF").
-///   - Top-Right: White circular Wishlist heart icon button.
+///   - Top-Right: Compact circular Wishlist heart button.
 ///   - Floating "ADD" Button: Compact bordered button in active theme color.
-///   - Bottom Half: Compact details section styled with active theme accents.
-///   - Grammage Pills: "40 g", "40 GSM" style size tags.
-///   - Product Title: 2 lines max, bold dark text.
-///   - Rating Stars & Count: Star rating icons + "(85)".
-///   - Delivery ETA: "20 MINS".
-///   - Discount Tag: "20% OFF" in active theme color.
-///   - Price Line: Main price ₹20 + strikethrough price ₹25.
-///   - Bottom Action Bar: "See more like this ▶" soft pill with active theme arrow.
+///   - Bottom Half: Streamlined details section with rating, ETA, price, and "See more like this ▶" pill.
 /// - Product Sorting: Lowest-priced products displayed first!
 class LowestPricesEverRow extends ConsumerWidget {
   const LowestPricesEverRow({
@@ -47,8 +41,8 @@ class LowestPricesEverRow extends ConsumerWidget {
     final primaryTint = AppColors.primaryTint;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: primaryTint, // Dynamic default app theme background tint
       ),
@@ -61,31 +55,31 @@ class LowestPricesEverRow extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(width: 24, height: 2, color: const Color(0xFF9CA3AF)),
+                Container(width: 20, height: 1.5, color: const Color(0xFF9CA3AF)),
                 const SizedBox(width: 8),
                 Text(
                   'LOWEST PRICES EVER',
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                    letterSpacing: 0.6,
+                    fontSize: 18,
+                    letterSpacing: 0.5,
                     color: const Color(0xFF111827),
                     shadows: const [
-                      Shadow(offset: Offset(0, 1.5), blurRadius: 2, color: Colors.black12),
+                      Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black12),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(width: 24, height: 2, color: const Color(0xFF9CA3AF)),
+                Container(width: 20, height: 1.5, color: const Color(0xFF9CA3AF)),
               ],
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          // HORIZONTAL PRODUCT CAROUSEL RAIL (COMPACT HEIGHT 268)
+          // HORIZONTAL PRODUCT CAROUSEL RAIL (ULTRA-COMPACT HEIGHT 228)
           SizedBox(
-            height: 268,
+            height: 228,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
@@ -130,15 +124,15 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
-        width: 140, // Reduced compact width
+        width: 132, // Compact width to fit multiple cards on screen
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: primaryTintStrong, width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
+              blurRadius: 5,
               offset: const Offset(0, 2),
             ),
           ],
@@ -147,42 +141,38 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // TOP WHITE IMAGE CONTAINER WITH BADGES & FLOATING ADD BUTTON
-            Container(
-              height: 100,
-              color: Colors.white,
+            // TOP IMAGE CONTAINER: FULL COVERAGE PRODUCT IMAGE (BoxFit.cover)
+            SizedBox(
+              height: 95,
               child: Stack(
                 children: [
-                  // Center Product Image
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 6, bottom: 4),
-                      child: AppNetworkImage(
-                        key: _imageKey,
-                        url: p.imageUrl,
-                        width: 76,
-                        height: 72,
-                        fit: BoxFit.contain,
-                      ),
+                  // Full coverage product image with no white margins
+                  Positioned.fill(
+                    child: AppNetworkImage(
+                      key: _imageKey,
+                      url: p.imageUrl,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
                     ),
                   ),
 
                   // Top Left Discount Red Pill Badge
                   Positioned(
-                    left: 6,
-                    top: 6,
+                    left: 5,
+                    top: 5,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: const Color(0xFFDC2626),
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '$discount% OFF',
                         style: GoogleFonts.inter(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
-                          fontSize: 8.5,
+                          fontSize: 8,
                         ),
                       ),
                     ),
@@ -190,21 +180,21 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
 
                   // Top Right White Wishlist Heart Button
                   Positioned(
-                    right: 6,
-                    top: 6,
+                    right: 5,
+                    top: 5,
                     child: GestureDetector(
                       onTap: () {
                         setState(() => _isFavorite = !_isFavorite);
                       },
                       child: Container(
-                        width: 24,
-                        height: 24,
+                        width: 22,
+                        height: 22,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 3,
                               offset: const Offset(0, 1),
                             ),
@@ -213,7 +203,7 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
                         alignment: Alignment.center,
                         child: Icon(
                           _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                          size: 13,
+                          size: 12,
                           color: _isFavorite ? Colors.red : const Color(0xFF374151),
                         ),
                       ),
@@ -222,8 +212,8 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
 
                   // Floating "ADD" Button (Bottom Right of Image Container)
                   Positioned(
-                    right: 6,
-                    bottom: 3,
+                    right: 5,
+                    bottom: 4,
                     child: GestureDetector(
                       onTap: p.isPurchasable
                           ? () => CartActions.add(
@@ -234,15 +224,15 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
                               )
                           : null,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: primaryColor, width: 1.8),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: primaryColor, width: 1.6),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 4,
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 3,
                               offset: const Offset(0, 1),
                             ),
                           ],
@@ -251,7 +241,7 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
                           p.isPurchasable ? 'ADD' : 'OUT',
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.w900,
-                            fontSize: 10.5,
+                            fontSize: 9.5,
                             color: primaryColor,
                           ),
                         ),
@@ -262,22 +252,31 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
               ),
             ),
 
-            // BOTTOM DETAILS SECTION
+            // BOTTOM DETAILS SECTION (COMPACT & READABLE)
             Padding(
-              padding: const EdgeInsets.all(7),
+              padding: const EdgeInsets.all(6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // GRAMMAGE / PACK SIZE PILLS
-                  Row(
-                    children: [
-                      _buildChipPill(packSizeStr),
-                      const SizedBox(width: 3),
-                      _buildChipPill('40 GSM'),
-                    ],
+                  // GRAMMAGE / PACK SIZE CHIP
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      packSizeStr,
+                      style: GoogleFonts.inter(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF4B5563),
+                      ),
+                    ),
                   ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
 
                   // PRODUCT TITLE
                   Text(
@@ -286,70 +285,55 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w800,
-                      fontSize: 10.5,
+                      fontSize: 10,
                       height: 1.15,
                       color: const Color(0xFF111827),
                     ),
                   ),
 
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
 
-                  // RATING STARS & COUNT
+                  // RATING & ETA ROW
                   Row(
                     children: [
-                      const Icon(Icons.star_rounded, size: 10.5, color: Color(0xFFFFB800)),
-                      const Icon(Icons.star_rounded, size: 10.5, color: Color(0xFFFFB800)),
-                      const Icon(Icons.star_rounded, size: 10.5, color: Color(0xFFFFB800)),
-                      const Icon(Icons.star_rounded, size: 10.5, color: Color(0xFFFFB800)),
-                      const Icon(Icons.star_half_rounded, size: 10.5, color: Color(0xFFFFB800)),
-                      const SizedBox(width: 2),
+                      const Icon(Icons.star_rounded, size: 10, color: Color(0xFFFFB800)),
+                      const SizedBox(width: 1.5),
                       Text(
-                        '(85)',
+                        '4.5 (85)',
                         style: GoogleFonts.inter(
                           fontSize: 8.5,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF6B7280),
                         ),
                       ),
+                      Text(
+                        ' • ',
+                        style: GoogleFonts.inter(
+                          fontSize: 8.5,
+                          color: const Color(0xFF9CA3AF),
+                        ),
+                      ),
+                      Text(
+                        '${p.deliveryMinutes ?? 20}m',
+                        style: GoogleFonts.inter(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF4B5563),
+                        ),
+                      ),
                     ],
                   ),
 
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
 
-                  // DELIVERY ETA
-                  Text(
-                    '${p.deliveryMinutes ?? 20} MINS',
-                    style: GoogleFonts.inter(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF4B5563),
-                    ),
-                  ),
-
-                  const SizedBox(height: 1),
-
-                  // DISCOUNT TAG
-                  Text(
-                    '$discount% OFF',
-                    style: GoogleFonts.inter(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w800,
-                      color: primaryColor,
-                    ),
-                  ),
-
-                  const SizedBox(height: 2),
-
-                  // PRICE LINE (Main Price + Strikethrough)
+                  // PRICE & DISCOUNT ROW
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
                         '₹${p.price.toStringAsFixed(0)}',
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.w900,
-                          fontSize: 14,
+                          fontSize: 13,
                           color: const Color(0xFF111827),
                         ),
                       ),
@@ -357,32 +341,43 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
                       Text(
                         '₹${strike.toStringAsFixed(0)}',
                         style: GoogleFonts.inter(
-                          fontSize: 9.5,
+                          fontSize: 9,
                           decoration: TextDecoration.lineThrough,
                           color: const Color(0xFF9CA3AF),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const Spacer(),
+                      Text(
+                        '$discount%',
+                        style: GoogleFonts.inter(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w900,
+                          color: primaryColor,
+                        ),
+                      ),
                     ],
                   ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 5),
 
                   // BOTTOM ACTION PILL: "See more like this ▶"
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                     decoration: BoxDecoration(
                       color: primaryTintStrong,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(5),
                     ),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
                             'See more like this',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
-                              fontSize: 8.5,
+                              fontSize: 8,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primaryDeepText,
                             ),
@@ -390,7 +385,7 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
                         ),
                         Icon(
                           Icons.play_arrow_rounded,
-                          size: 11,
+                          size: 10,
                           color: primaryColor,
                         ),
                       ],
@@ -400,24 +395,6 @@ class _LowestPriceCardState extends ConsumerState<_LowestPriceCard> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChipPill(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E7EB),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.inter(
-          fontSize: 8.5,
-          fontWeight: FontWeight.w700,
-          color: const Color(0xFF4B5563),
         ),
       ),
     );
