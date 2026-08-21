@@ -715,8 +715,33 @@ class _PocketScreenState extends ConsumerState<PocketScreen> {
 
   Widget _buildEarningsBreakupCard(ThemeData theme, Color textColor, Color? subTextColor) {
     final summary = _pocketData?['summary'] as Map<String, dynamic>?;
+
+    // Food/Mart split, summed from the very trips this card is reporting on
+    // rather than from the daily earnings endpoint — the two cover different
+    // periods, and reading one into the other would show a split that does not
+    // add up to the Delivery Earnings line right above it.
+    var foodEarnings = 0.0;
+    var martEarnings = 0.0;
+    for (final trip in ((_pocketData?['trips'] as List<dynamic>?) ?? [])
+        .whereType<Map<String, dynamic>>()) {
+      final amount = (trip['earningAmount'] as num?)?.toDouble() ??
+          (trip['deliveryEarning'] as num?)?.toDouble() ??
+          (trip['amount'] as num?)?.toDouble() ??
+          0;
+      if (trip['vertical'] == 'quick') {
+        martEarnings += amount;
+      } else {
+        foodEarnings += amount;
+      }
+    }
+
+    // Food and Mart are indented under Delivery Earnings because that is what
+    // they partition. Bonus is not delivery earnings, so folding it in would
+    // make a "Total" that no longer equals Food + Mart.
     final rows = [
       ('Delivery Earnings', (summary?['totalEarning'] as num?)?.toDouble() ?? 0),
+      ('     Maava Food', foodEarnings),
+      ('     Maava Mart', martEarnings),
       ('Bonus', (summary?['totalBonus'] as num?)?.toDouble() ?? 0),
       ('Total', (summary?['grandTotal'] as num?)?.toDouble() ?? 0),
     ];
