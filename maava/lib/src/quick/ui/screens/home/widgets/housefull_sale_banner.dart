@@ -7,16 +7,13 @@ import '../../../../domain/model/product.dart';
 
 /// Housefull Sale Banner matching the reference layout & structure:
 ///
-/// - Top 3D Text: "HOUSEFULL SALE"
-/// - Date Sub-label: "30TH NOV, 2025 - 7TH DEC, 2025"
-/// - Left Side Card: "CRAZY DEALS" (Price badges ₹198 → ₹129, category label & product image box)
-/// - Right Side Grid (2x2):
-///   1. Up to 55% OFF - Self Care & Wellness (Icons: 🧴 💧 🧼 💄)
-///   2. Up to 55% OFF - Hot Meals & Drinks (Icons: 🍜 ☕ 🥛 🍞)
-///   3. Up to 55% OFF - Kitchen Essentials (Icons: 🌾 🍚 🫘 🫒)
-///   4. Up to 75% OFF - Cleaning & Home Needs (Icons: 🧹 🧽 🧼 🧴)
+/// - Deep Midnight Contrast Background for high 3D pop against header.
+/// - Top 3D Text: "HOUSEFULL SALE" with Gold Sparkle Icons ⚡
+/// - Date Sub-label Pill: "30TH NOV, 2025 - 7TH DEC, 2025"
+/// - Left Side CRAZY DEALS Card: High-contrast gradient card with Gold border,
+///   dark strikethrough price pill, red deal price pill & white image box.
+/// - Right Side Grid (2x2): Pure white rounded cards with vibrant discount badges.
 /// - Bottom Wavy / Scalloped Edge transitioning into the white content area.
-/// - Dynamic Palette: Built using active theme color ([AppColors.primary]).
 class HousefullSaleBanner extends StatelessWidget {
   const HousefullSaleBanner({
     super.key,
@@ -35,7 +32,19 @@ class HousefullSaleBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = AppColors.primary;
     final primaryDeep = AppColors.primaryDeep;
-    final primaryLight = AppColors.primaryLight;
+
+    // High-contrast deep midnight brand gradient for maximum 3D separation from header
+    final HSLColor hsl = HSLColor.fromColor(primary);
+    final Color deepMidnight = hsl
+        .withLightness((hsl.lightness * 0.28).clamp(0.06, 0.22))
+        .withSaturation((hsl.saturation * 0.95).clamp(0.5, 0.95))
+        .toColor();
+    final Color richDeepBrand = hsl
+        .withLightness((hsl.lightness * 0.42).clamp(0.15, 0.35))
+        .toColor();
+    final Color midBrand = hsl
+        .withLightness((hsl.lightness * 0.58).clamp(0.32, 0.52))
+        .toColor();
 
     return ClipPath(
       clipper: const _ScallopedEdgeClipper(),
@@ -43,15 +52,22 @@ class HousefullSaleBanner extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              primaryDeep,
-              primary,
-              primaryLight,
+              deepMidnight,
+              richDeepBrand,
+              midBrand,
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
-        padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
+        padding: const EdgeInsets.fromLTRB(14, 18, 14, 28),
         child: Column(
           children: [
             // TOP SALE TITLE & DECORATIVE SPARKLES
@@ -60,24 +76,24 @@ class HousefullSaleBanner extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 const Positioned(
-                  left: 24,
-                  top: 0,
-                  child: Icon(Icons.flash_on_rounded, color: Color(0xFFFFD700), size: 26),
+                  left: 20,
+                  top: -2,
+                  child: Icon(Icons.flash_on_rounded, color: Color(0xFFFFD700), size: 28),
                 ),
                 const Positioned(
-                  right: 24,
-                  top: 0,
-                  child: Icon(Icons.flash_on_rounded, color: Color(0xFFFFD700), size: 26),
+                  right: 20,
+                  top: -2,
+                  child: Icon(Icons.flash_on_rounded, color: Color(0xFFFFD700), size: 28),
                 ),
                 const Positioned(
-                  left: 6,
+                  left: 4,
                   top: 18,
-                  child: Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 16),
+                  child: Icon(Icons.auto_awesome_rounded, color: Color(0xFFFDE68A), size: 16),
                 ),
                 const Positioned(
-                  right: 6,
+                  right: 4,
                   top: 18,
-                  child: Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 16),
+                  child: Icon(Icons.auto_awesome_rounded, color: Color(0xFFFDE68A), size: 16),
                 ),
                 Column(
                   mainAxisSize: MainAxisSize.min,
@@ -89,11 +105,11 @@ class HousefullSaleBanner extends StatelessWidget {
                         fontSize: 32,
                         fontWeight: FontWeight.w900,
                         height: 1.0,
-                        letterSpacing: 1.2,
+                        letterSpacing: 1.5,
                         color: Colors.white,
                         shadows: const [
-                          Shadow(offset: Offset(0, 3), blurRadius: 0, color: Color(0x73000000)),
-                          Shadow(offset: Offset(0, 5), blurRadius: 4, color: Color(0x33000000)),
+                          Shadow(offset: Offset(0, 3), blurRadius: 0, color: Color(0x99000000)),
+                          Shadow(offset: Offset(0, 6), blurRadius: 6, color: Color(0x4D000000)),
                         ],
                       ),
                     ),
@@ -105,22 +121,35 @@ class HousefullSaleBanner extends StatelessWidget {
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
                         height: 1.0,
-                        letterSpacing: 2.0,
+                        letterSpacing: 2.2,
                         color: Colors.white,
                         shadows: const [
-                          Shadow(offset: Offset(0, 2.5), blurRadius: 0, color: Color(0x73000000)),
+                          Shadow(offset: Offset(0, 2.5), blurRadius: 0, color: Color(0x99000000)),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '30TH NOV, 2025 - 7TH DEC, 2025',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white.withValues(alpha: 0.95),
-                        letterSpacing: 0.5,
+                    const SizedBox(height: 8),
+
+                    // Date range pill badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        '30TH NOV, 2025 - 7TH DEC, 2025',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFFDE68A),
+                          letterSpacing: 0.6,
+                        ),
                       ),
                     ),
                   ],
@@ -128,7 +157,7 @@ class HousefullSaleBanner extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
 
             // MAIN CONTENT GRID: CRAZY DEALS CARD (LEFT) + 2x2 CATEGORIES GRID (RIGHT)
             IntrinsicHeight(
@@ -138,7 +167,7 @@ class HousefullSaleBanner extends StatelessWidget {
                   // LEFT: CRAZY DEALS CARD
                   Expanded(
                     flex: 4,
-                    child: _buildCrazyDealsCard(context),
+                    child: _buildCrazyDealsCard(context, primary, primaryDeep),
                   ),
 
                   const SizedBox(width: 10),
@@ -146,7 +175,7 @@ class HousefullSaleBanner extends StatelessWidget {
                   // RIGHT: 2x2 CATEGORY OFFER CARDS GRID
                   Expanded(
                     flex: 7,
-                    child: _buildCategoryGrid(context),
+                    child: _buildCategoryGrid(context, primary, primaryDeep),
                   ),
                 ],
               ),
@@ -159,22 +188,36 @@ class HousefullSaleBanner extends StatelessWidget {
     );
   }
 
-  Widget _buildCrazyDealsCard(BuildContext context) {
-    final strikePrice = dealProduct?.strikePrice ?? 198;
-    final dealPrice = dealProduct?.price ?? 129;
-    final titleLabel = dealProduct?.name ?? 'Biscuit';
+  Widget _buildCrazyDealsCard(BuildContext context, Color primary, Color primaryDeep) {
+    final strikePrice = dealProduct?.strikePrice ?? 200;
+    final dealPrice = dealProduct?.price ?? 150;
+    final titleLabel = dealProduct?.name ?? 'cherry';
     final imageUrl = dealProduct?.imageUrl ?? '';
 
     return GestureDetector(
       onTap: onCrazyDealsTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
+          gradient: LinearGradient(
+            colors: [
+              primary,
+              primaryDeep,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.25),
-            width: 1,
+            color: const Color(0xFFFBBF24), // Vibrant Gold border matching reference
+            width: 1.8,
           ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black38,
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
         child: Column(
@@ -190,7 +233,7 @@ class HousefullSaleBanner extends StatelessWidget {
                     color: Colors.white,
                     height: 1.1,
                     shadows: const [
-                      Shadow(offset: Offset(0, 2), blurRadius: 0, color: Color(0x66000000)),
+                      Shadow(offset: Offset(0, 2), blurRadius: 0, color: Color(0x8C000000)),
                     ],
                   ),
                 ),
@@ -202,7 +245,7 @@ class HousefullSaleBanner extends StatelessWidget {
                     color: Colors.white,
                     height: 1.1,
                     shadows: const [
-                      Shadow(offset: Offset(0, 2), blurRadius: 0, color: Color(0x66000000)),
+                      Shadow(offset: Offset(0, 2), blurRadius: 0, color: Color(0x8C000000)),
                     ],
                   ),
                 ),
@@ -212,7 +255,7 @@ class HousefullSaleBanner extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF374151),
+                    color: const Color(0xFF1F2937),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -229,14 +272,14 @@ class HousefullSaleBanner extends StatelessWidget {
 
                 const SizedBox(height: 5),
 
-                // Deal Price Badge (accent highlight)
+                // Deal Price Badge (Vibrant Accent)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: const Color(0xFFEF4444), // Vibrant Red badge for max pop
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 2)),
+                      BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
                     ],
                   ),
                   child: Text(
@@ -257,7 +300,7 @@ class HousefullSaleBanner extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
@@ -271,12 +314,12 @@ class HousefullSaleBanner extends StatelessWidget {
             Container(
               width: 68,
               height: 68,
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+                  BoxShadow(color: Colors.black26, blurRadius: 5, offset: Offset(0, 2)),
                 ],
               ),
               alignment: Alignment.center,
@@ -285,15 +328,15 @@ class HousefullSaleBanner extends StatelessWidget {
                       imageUrl,
                       fit: BoxFit.contain,
                       errorBuilder: (_, _, _) => const Icon(
-                        Icons.cookie_outlined,
-                        color: Color(0xFF6B7280),
-                        size: 36,
+                        Icons.fastfood_rounded,
+                        color: Color(0xFF7C3AED),
+                        size: 34,
                       ),
                     )
                   : const Icon(
-                      Icons.cookie_outlined,
-                      color: Color(0xFF6B7280),
-                      size: 36,
+                      Icons.fastfood_rounded,
+                      color: Color(0xFF7C3AED),
+                      size: 34,
                     ),
             ),
           ],
@@ -302,7 +345,7 @@ class HousefullSaleBanner extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryGrid(BuildContext context) {
+  Widget _buildCategoryGrid(BuildContext context, Color primary, Color primaryDeep) {
     final List<_CategoryCardData> cards = [
       const _CategoryCardData(
         title: 'Self Care &\nWellness',
@@ -323,7 +366,7 @@ class HousefullSaleBanner extends StatelessWidget {
         categoryId: 'kitchen',
       ),
       const _CategoryCardData(
-        title: 'Cleaning & Home\nNeeds',
+        title: 'Cleaning &\nHome',
         badgeText: 'Up to 75% OFF',
         emojis: '🧹 🧽 🧼 🧴',
         categoryId: 'cleaning',
@@ -335,9 +378,9 @@ class HousefullSaleBanner extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              Expanded(child: _buildCategoryCard(context, cards[0])),
+              Expanded(child: _buildCategoryCard(context, cards[0], primary, primaryDeep)),
               const SizedBox(width: 8),
-              Expanded(child: _buildCategoryCard(context, cards[1])),
+              Expanded(child: _buildCategoryCard(context, cards[1], primary, primaryDeep)),
             ],
           ),
         ),
@@ -345,9 +388,9 @@ class HousefullSaleBanner extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              Expanded(child: _buildCategoryCard(context, cards[2])),
+              Expanded(child: _buildCategoryCard(context, cards[2], primary, primaryDeep)),
               const SizedBox(width: 8),
-              Expanded(child: _buildCategoryCard(context, cards[3])),
+              Expanded(child: _buildCategoryCard(context, cards[3], primary, primaryDeep)),
             ],
           ),
         ),
@@ -355,9 +398,12 @@ class HousefullSaleBanner extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryCard(BuildContext context, _CategoryCardData data) {
-    final primary = AppColors.primary;
-
+  Widget _buildCategoryCard(
+    BuildContext context,
+    _CategoryCardData data,
+    Color primary,
+    Color primaryDeep,
+  ) {
     return GestureDetector(
       onTap: () => onCategoryCardTap?.call(data.categoryId),
       child: Container(
@@ -366,21 +412,26 @@ class HousefullSaleBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+        padding: const EdgeInsets.fromLTRB(6, 7, 6, 9),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // Top Discount Badge Pill
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
               decoration: BoxDecoration(
-                color: primary,
+                gradient: LinearGradient(
+                  colors: [
+                    primary,
+                    primaryDeep,
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -404,7 +455,7 @@ class HousefullSaleBanner extends StatelessWidget {
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF111111),
+                color: const Color(0xFF111827),
                 height: 1.15,
               ),
             ),

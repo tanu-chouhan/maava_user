@@ -36,6 +36,7 @@ import 'package:maava_delivery/features/refer_earn/application/referral_controll
 import 'package:maava_delivery/features/chat/presentation/screens/chat_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:maava_delivery/core/presentation/widgets/vertical_breakdown_sheet.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -777,6 +778,71 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     );
   }
 
+  /// Reads the Food/Mart split straight off the earnings summary the cards are
+  /// already showing, so the sheet can never disagree with the card behind it.
+  /// `foodEarnings`/`martEarnings` come from the backend's per-vertical
+  /// aggregation; the fallbacks keep an older backend from rendering nulls.
+  double _summaryNum(String key) =>
+      (_earningsSummary?[key] as num?)?.toDouble() ?? 0;
+
+  int _summaryInt(String key) => (_earningsSummary?[key] as num?)?.toInt() ?? 0;
+
+  void _showEarningsBreakdown() {
+    HapticService.light();
+    final food = _summaryNum('foodEarnings');
+    final mart = _summaryNum('martEarnings');
+    VerticalBreakdownSheet.show(
+      context,
+      title: "Today's Earnings",
+      subtitle: 'Split by order source',
+      rows: [
+        VerticalBreakdownRow(
+          label: 'Maava Food',
+          value: '₹${food.toStringAsFixed(2)}',
+          icon: Icons.restaurant_rounded,
+          tint: Colors.green,
+        ),
+        VerticalBreakdownRow(
+          label: 'Maava Mart',
+          value: '₹${mart.toStringAsFixed(2)}',
+          icon: Icons.storefront_rounded,
+          tint: Colors.teal,
+        ),
+      ],
+      totalLabel: 'Total Earnings',
+      // Summed from the same two numbers shown above rather than read from
+      // totalEarnings, so the sheet's own arithmetic is always self-consistent.
+      totalValue: '₹${(food + mart).toStringAsFixed(2)}',
+    );
+  }
+
+  void _showOrdersBreakdown() {
+    HapticService.light();
+    final food = _summaryInt('foodOrders');
+    final mart = _summaryInt('martOrders');
+    VerticalBreakdownSheet.show(
+      context,
+      title: "Today's Orders",
+      subtitle: 'Split by order source',
+      rows: [
+        VerticalBreakdownRow(
+          label: 'Maava Food',
+          value: '$food',
+          icon: Icons.restaurant_rounded,
+          tint: Colors.green,
+        ),
+        VerticalBreakdownRow(
+          label: 'Maava Mart',
+          value: '$mart',
+          icon: Icons.storefront_rounded,
+          tint: Colors.teal,
+        ),
+      ],
+      totalLabel: 'Total Orders',
+      totalValue: '${food + mart}',
+    );
+  }
+
   Widget _buildEarningsAndOrdersRow(ThemeData theme) {
     final totalEarnings = (_earningsSummary?['totalEarnings'] as num?)?.toDouble() ?? 0;
     final totalOrders = (_earningsSummary?['totalOrders'] as num?)?.toInt() ?? 0;
@@ -826,6 +892,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             ),
           ),
         ),
+          ),
         SizedBox(width: 12.w),
         Expanded(
           child: GestureDetector(
@@ -870,6 +937,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             ),
           ),
         ),
+          ),
       ],
     );
   }
