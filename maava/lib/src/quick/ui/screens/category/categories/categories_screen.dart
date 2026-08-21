@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/errors/error_mapper.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -183,13 +184,13 @@ class CategoriesScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(2, 12, 2, 10),
+                              padding: const EdgeInsets.fromLTRB(2, 16, 2, 12),
                               child: Text(
                                 sectionTitle,
-                                style: context.text.titleLarge!.copyWith(
+                                style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 18,
-                                  color: context.colors.onSurface,
+                                  fontSize: 20,
+                                  color: const Color(0xFF111827),
                                 ),
                               ),
                             ),

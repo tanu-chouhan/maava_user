@@ -18,6 +18,7 @@ import 'home_state.dart';
 import 'widgets/deal_of_the_day_row.dart';
 import 'widgets/delivery_header.dart';
 import 'widgets/feature_highlights_row.dart';
+import 'widgets/all_category_sections_feed.dart';
 import 'widgets/bestsellers_row.dart';
 import 'widgets/featured_this_week_row.dart';
 import 'widgets/housefull_sale_banner.dart';
@@ -194,6 +195,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 onCategoryTap: (catId) =>
                     context.push(RoutePaths.subCategoryOf(catId)),
               ),
+            ),
+          ),
+
+          // 6. ALL CATEGORY SECTIONS (4-Column Grids per category matching reference screenshot 1:1)
+          SliverToBoxAdapter(
+            child: AllCategorySectionsFeed(
+              categories: state.categories,
+              onCategoryTap: (catId) =>
+                  context.push(RoutePaths.subCategoryOf(catId)),
             ),
           ),
 

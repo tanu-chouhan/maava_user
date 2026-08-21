@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_durations.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -43,24 +44,31 @@ class _CategoryCardState extends State<CategoryCard> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Soft Mint Pastel Rounded Image Plate (Matching Screenshot)
+            // White Rounded Rectangular Card Container (Matching Reference Screenshot 1:1)
             Container(
               height: widget.size,
               width: double.infinity,
-              padding: const EdgeInsets.all(7),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFEBF5F0), // Pastel soft mint green
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: const Color(0xFFE0ECE6),
-                  width: 0.8,
+                  color: const Color(0xFFE5E7EB),
+                  width: 1.0,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               clipBehavior: Clip.antiAlias,
               alignment: Alignment.center,
               child: AppNetworkImage(
                 url: widget.category.imageUrl,
-                height: widget.size - 14,
+                height: widget.size - 16,
                 width: double.infinity,
                 fit: BoxFit.contain,
                 fallbackIcon: Icons.shopping_basket_outlined,
@@ -74,10 +82,10 @@ class _CategoryCardState extends State<CategoryCard> {
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              style: context.text.labelSmall!.copyWith(
+              style: GoogleFonts.inter(
                 fontWeight: FontWeight.w800,
                 fontSize: 11.5,
-                color: context.colors.onSurface,
+                color: const Color(0xFF111827),
                 height: 1.15,
               ),
             ),
