@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../../presentation/branding/app_colors.dart';
 import '../../../../domain/model/category.dart';
 import '../../../../di/app_providers.dart';
 import '../../../../navigation/route_paths.dart';
@@ -57,13 +58,17 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
       addressLine = 'Appzeto, Princess Center, New Palasia, Indore, Madhya Pradesh';
     }
 
+    final primary = AppColors.primary;
+    final primaryLight = AppColors.primaryLight;
+    final primaryDeep = AppColors.primaryDeep;
+
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Color(0xFFFA751C), // Vibrant warm orange
-            Color(0xFFFB8C2E), // Rich orange
-            Color(0xFFFF9736), // Soft orange bottom
+            primaryDeep,
+            primary,
+            primaryLight,
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -91,7 +96,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF232323),
+                          color: Colors.white.withValues(alpha: 0.90),
                           height: 1.1,
                         ),
                       ),
@@ -103,7 +108,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                           fontWeight: FontWeight.w900,
                           height: 1.05,
                           letterSpacing: -0.5,
-                          color: const Color(0xFF111111),
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -121,7 +126,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                                 style: GoogleFonts.inter(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF2D2D2D),
+                                  color: Colors.white.withValues(alpha: 0.95),
                                 ),
                               ),
                             ),
@@ -129,7 +134,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                             const Icon(
                               Icons.keyboard_arrow_down_rounded,
                               size: 18,
-                              color: Color(0xFF2D2D2D),
+                              color: Colors.white,
                             ),
                           ],
                         ),
@@ -276,7 +281,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                     borderRadius: BorderRadius.circular(12),
                     border: item.id == 'all'
                         ? Border.all(
-                            color: const Color(0xFF1E1E1E),
+                            color: Colors.white,
                             width: 1.5,
                           )
                         : null,
@@ -285,7 +290,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                   child: Icon(
                     item.icon,
                     size: 24,
-                    color: const Color(0xFF111111),
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -294,7 +299,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    color: const Color(0xFF111111),
+                    color: Colors.white,
                   ),
                 ),
                 if (isSelected && item.id == 'all') ...[
@@ -303,7 +308,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                     width: 26,
                     height: 3.5,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF111111),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),

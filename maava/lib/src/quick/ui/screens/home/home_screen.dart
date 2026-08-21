@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../presentation/branding/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/model/banner.dart';
@@ -64,12 +65,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final state = ref.watch(homeProvider);
     final topPadding = MediaQuery.of(context).padding.top;
 
+    final isDarkIcon = HSLColor.fromColor(AppColors.primary).lightness > 0.65;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // Match status bar color seamlessly with the warm orange header
-      value: const SystemUiOverlayStyle(
+      // Match status bar color seamlessly with active theme header
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark, // Dark icons for Android over orange
-        statusBarBrightness: Brightness.light, // Dark icons for iOS over orange
+        statusBarIconBrightness: isDarkIcon ? Brightness.dark : Brightness.light,
+        statusBarBrightness: isDarkIcon ? Brightness.dark : Brightness.light,
       ),
       child: Scaffold(
         backgroundColor: context.colors.surface,
