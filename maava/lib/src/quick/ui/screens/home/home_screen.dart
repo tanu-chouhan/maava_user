@@ -7,7 +7,6 @@ import '../../../../presentation/branding/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../navigation/route_paths.dart';
-import '../../common/widgets/misc/section_header.dart';
 import '../../common/widgets/misc/sound_refresh_indicator.dart';
 import '../../common/widgets/states/error_state_widget.dart';
 import '../../common/widgets/states/offline_banner.dart';
@@ -15,9 +14,7 @@ import '../product/product_listing/product_listing_args.dart';
 import 'home_provider.dart';
 import '../../../domain/model/product.dart';
 import 'home_state.dart';
-import 'widgets/deal_of_the_day_row.dart';
 import 'widgets/delivery_header.dart';
-import 'widgets/feature_highlights_row.dart';
 import 'widgets/all_category_sections_feed.dart';
 import 'widgets/bestsellers_row.dart';
 import 'widgets/featured_this_week_row.dart';
@@ -26,8 +23,6 @@ import 'widgets/lowest_prices_ever_row.dart';
 import 'widgets/shop_by_category_row.dart';
 import 'widgets/value_props_strip.dart';
 import 'widgets/active_order_card.dart';
-import 'widgets/product_row.dart';
-import 'widgets/shop_by_brand_row.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -207,80 +202,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // 7. DEAL OF THE DAY (Discounted products with ADD TO CART 🛒)
-          SliverToBoxAdapter(
-            child: DealOfTheDayRow(
-              products: _dealProducts(state),
-              onSeeAll: () => context.push(
-                RoutePaths.productListing,
-                extra: const ProductListingArgs(title: 'Deal of the day'),
-              ),
-              onProductTap: (p) => context.push(RoutePaths.productDetailsOf(p.id)),
-            ),
-          ),
-
-          // 8. Footer Trust / Feature Highlights Strip (Best Quality, Affordable Prices, Fast Delivery, 100% Secure, Easy Returns)
-          const SliverToBoxAdapter(
-            child: FeatureHighlightsRow(),
-          ),
-
-          // 9. Brands row
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: ShopByBrandRow(
-                brands: state.brands,
-                isLoading: state.isLoadingSections,
-                onSeeAll: () => context.push(
-                  RoutePaths.productListing,
-                  extra: const ProductListingArgs(title: 'Shop by Brand'),
-                ),
-                onBrandTap: (brand) => context.push(
-                  RoutePaths.productListing,
-                  extra: ProductListingArgs(
-                    title: brand.name,
-                    brandName: brand.name,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // 10. Dynamic catalog sections (Bestsellers, Trending, Buy it again, Category Rows)
-          ...state.sections
-              .where((s) => s.id != _dealSectionId)
-              .map((section) {
-            return SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SectionHeader(
-                      title: section.title,
-                      subtitle: section.subtitle,
-                      onSeeAll: () => context.push(
-                        RoutePaths.productListing,
-                        extra: ProductListingArgs(
-                          title: section.title,
-                        ),
-                      ),
-                    ),
-                    ProductRow(
-                      products: section.products,
-                      heroTag: 'home_${section.id}',
-                      onProductTap: (product) => context.push(
-                        RoutePaths.productDetailsOf(product.id),
-                        extra: product,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-
           const SliverToBoxAdapter(
             child: SizedBox(height: AppSpacing.xl * 2),
           ),
@@ -292,8 +213,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// The home section that backs "Deal of the day".
   static const _dealSectionId = 'flash';
 
-  /// Products for the deal rail: the discount section when the backend built
-  /// one, otherwise nothing — never a filler list.
   List<Product> _dealProducts(HomeState state) {
     for (final section in state.sections) {
       if (section.id == _dealSectionId) return section.products;
