@@ -7,10 +7,12 @@ import '../../../../domain/model/product.dart';
 import '../../../../../presentation/branding/app_colors.dart';
 import '../../../common/cart_actions.dart';
 import '../../../common/widgets/misc/app_network_image.dart';
+import 'bouncing_heading.dart';
 
 /// "LOWEST PRICES EVER" section rail:
 ///
 /// - Section Background: Uses active default app theme color tint ([AppColors.primaryTint]).
+/// - Heading Animation: Continuous floating/popping loop with [BouncingHeading].
 /// - Image Area: Full coverage image ([BoxFit.cover]) with zero empty white margin around it.
 /// - Ultra-Compact Card Dimensions: Reduced card width (132) & height (228) for maximum space efficiency.
 /// - Product Card Layout:
@@ -49,7 +51,7 @@ class LowestPricesEverRow extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // TITLE HEADER: "— LOWEST PRICES EVER —"
+          // TITLE HEADER: "— LOWEST PRICES EVER —" (ANIMATED BOUNCING HEADING)
           Padding(
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
             child: Row(
@@ -57,16 +59,18 @@ class LowestPricesEverRow extends ConsumerWidget {
               children: [
                 Container(width: 20, height: 1.5, color: const Color(0xFF9CA3AF)),
                 const SizedBox(width: 8),
-                Text(
-                  'LOWEST PRICES EVER',
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    letterSpacing: 0.5,
-                    color: const Color(0xFF111827),
-                    shadows: const [
-                      Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black12),
-                    ],
+                BouncingHeading(
+                  child: Text(
+                    'LOWEST PRICES EVER',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      letterSpacing: 0.5,
+                      color: const Color(0xFF111827),
+                      shadows: const [
+                        Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black12),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),

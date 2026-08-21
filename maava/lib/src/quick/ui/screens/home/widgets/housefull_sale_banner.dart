@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../../presentation/branding/app_colors.dart';
 import '../../../../domain/model/category.dart';
 import '../../../../domain/model/product.dart';
+import 'bouncing_heading.dart';
 
 /// Housefull Sale Banner matching the reference layout & structure:
 ///
@@ -95,64 +96,66 @@ class HousefullSaleBanner extends StatelessWidget {
                   top: 18,
                   child: Icon(Icons.auto_awesome_rounded, color: Color(0xFFFDE68A), size: 16),
                 ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'HOUSEFULL',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        height: 1.0,
-                        letterSpacing: 1.5,
-                        color: Colors.white,
-                        shadows: const [
-                          Shadow(offset: Offset(0, 3), blurRadius: 0, color: Color(0x99000000)),
-                          Shadow(offset: Offset(0, 6), blurRadius: 6, color: Color(0x4D000000)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'SALE',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        height: 1.0,
-                        letterSpacing: 2.2,
-                        color: Colors.white,
-                        shadows: const [
-                          Shadow(offset: Offset(0, 2.5), blurRadius: 0, color: Color(0x99000000)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Date range pill badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        '30TH NOV, 2025 - 7TH DEC, 2025',
+                BouncingHeading(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'HOUSEFULL',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFFFDE68A),
-                          letterSpacing: 0.6,
+                        style: GoogleFonts.outfit(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          height: 1.0,
+                          letterSpacing: 1.5,
+                          color: Colors.white,
+                          shadows: const [
+                            Shadow(offset: Offset(0, 3), blurRadius: 0, color: Color(0x99000000)),
+                            Shadow(offset: Offset(0, 6), blurRadius: 6, color: Color(0x4D000000)),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        'SALE',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          height: 1.0,
+                          letterSpacing: 2.2,
+                          color: Colors.white,
+                          shadows: const [
+                            Shadow(offset: Offset(0, 2.5), blurRadius: 0, color: Color(0x99000000)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Date range pill badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          '30TH NOV, 2025 - 7TH DEC, 2025',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFFFDE68A),
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
