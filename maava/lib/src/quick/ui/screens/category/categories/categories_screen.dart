@@ -184,13 +184,14 @@ class CategoriesScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(2, 16, 2, 12),
+                              padding: const EdgeInsets.fromLTRB(2, 16, 2, 10),
                               child: Text(
                                 sectionTitle,
                                 style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 20,
-                                  color: const Color(0xFF111827),
+                                  fontSize: 19,
+                                  color: const Color(0xFF0F172A),
+                                  letterSpacing: -0.2,
                                 ),
                               ),
                             ),
@@ -201,9 +202,9 @@ class CategoriesScreen extends ConsumerWidget {
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 4,
-                                mainAxisSpacing: 16,
-                                crossAxisSpacing: 10,
-                                childAspectRatio: 0.70,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 8,
+                                childAspectRatio: 0.72,
                               ),
                               itemBuilder: (context, index) {
                                 final category = sectionCategories[index];
@@ -211,7 +212,7 @@ class CategoriesScreen extends ConsumerWidget {
                                   index: index,
                                   child: CategoryCard(
                                     category: category,
-                                    size: 74,
+                                    size: 70,
                                     onTap: () => context.push(
                                       RoutePaths.subCategoryOf(category.id),
                                       extra: category,
@@ -220,7 +221,7 @@ class CategoriesScreen extends ConsumerWidget {
                                 );
                               },
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 12),
                           ],
                         );
                       },

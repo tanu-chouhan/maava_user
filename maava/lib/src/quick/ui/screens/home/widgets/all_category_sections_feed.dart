@@ -94,13 +94,14 @@ class AllCategorySectionsFeed extends StatelessWidget {
         for (final entry in sections.entries) ...[
           // Category Section Heading
           Padding(
-            padding: EdgeInsets.fromLTRB(AppSpacing.gutter, 18, AppSpacing.gutter, 12),
+            padding: EdgeInsets.fromLTRB(AppSpacing.gutter, 16, AppSpacing.gutter, 10),
             child: Text(
               entry.key,
               style: GoogleFonts.outfit(
                 fontWeight: FontWeight.w900,
-                fontSize: 20,
-                color: const Color(0xFF111827),
+                fontSize: 19,
+                color: const Color(0xFF0F172A),
+                letterSpacing: -0.2,
               ),
             ),
           ),
@@ -114,21 +115,21 @@ class AllCategorySectionsFeed extends StatelessWidget {
               itemCount: entry.value.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 4,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 10,
-                childAspectRatio: 0.70,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 8,
+                childAspectRatio: 0.72,
               ),
               itemBuilder: (context, index) {
                 final subCategory = entry.value[index];
                 return CategoryCard(
                   category: subCategory,
-                  size: 74,
+                  size: 70,
                   onTap: () => onCategoryTap(subCategory.id),
                 );
               },
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
         ],
       ],
     );

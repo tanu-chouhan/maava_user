@@ -44,39 +44,49 @@ class _CategoryCardState extends State<CategoryCard> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // White Rounded Rectangular Card Container (Matching Reference Screenshot 1:1)
+            // Clean Modern Rounded White Card Container
             Container(
               height: widget.size,
               width: double.infinity,
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: const Color(0xFFE5E7EB),
-                  width: 1.0,
+                  color: const Color(0xFFF1F5F9),
+                  width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 6,
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
               clipBehavior: Clip.antiAlias,
               alignment: Alignment.center,
-              child: AppNetworkImage(
-                url: widget.category.imageUrl,
-                height: widget.size - 16,
+              child: Container(
                 width: double.infinity,
-                fit: BoxFit.contain,
-                fallbackIcon: Icons.shopping_basket_outlined,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                clipBehavior: Clip.antiAlias,
+                alignment: Alignment.center,
+                child: AppNetworkImage(
+                  url: widget.category.imageUrl,
+                  height: double.infinity,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  fallbackIcon: Icons.shopping_basket_outlined,
+                ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
 
-            // 2-Line Bold Category Title
+            // Clean Modern Category Title Below Card
             Text(
               widget.category.name,
               maxLines: 2,
@@ -84,16 +94,17 @@ class _CategoryCardState extends State<CategoryCard> {
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w800,
-                fontSize: 11.5,
-                color: const Color(0xFF111827),
+                fontSize: 10.5,
+                color: const Color(0xFF0F172A),
                 height: 1.15,
+                letterSpacing: -0.1,
               ),
             ),
 
             if (widget.showCount && widget.category.itemCount > 0)
               Text(
                 '${widget.category.itemCount} items',
-                style: context.text.bodySmall!.copyWith(fontSize: 9.5),
+                style: context.text.bodySmall!.copyWith(fontSize: 9),
               ),
           ],
         ),
