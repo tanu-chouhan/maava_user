@@ -19,6 +19,7 @@ import 'widgets/deal_of_the_day_row.dart';
 import 'widgets/delivery_header.dart';
 import 'widgets/feature_highlights_row.dart';
 import 'widgets/housefull_sale_banner.dart';
+import 'widgets/lowest_prices_ever_row.dart';
 import 'widgets/shop_by_category_row.dart';
 import 'widgets/value_props_strip.dart';
 import 'widgets/active_order_card.dart';
@@ -150,7 +151,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // 3. Trust / Service Promises Strip (Farm Fresh, Free Delivery, Secure Payment, Easy Returns)
+          // 3. LOWEST PRICES EVER RAIL (Sorted by lowest price first, matching reference card design)
+          SliverToBoxAdapter(
+            child: LowestPricesEverRow(
+              products: state.sections.expand((s) => s.products).toList(),
+              onProductTap: (p) => context.push(RoutePaths.productDetailsOf(p.id)),
+            ),
+          ),
+
+          // 4. Trust / Service Promises Strip (Farm Fresh, Free Delivery, Secure Payment, Easy Returns)
           const SliverToBoxAdapter(
             child: TrustStrip(),
           ),

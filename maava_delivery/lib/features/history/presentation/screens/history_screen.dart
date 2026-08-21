@@ -66,6 +66,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   String _tripRestaurant(Map<String, dynamic> t) =>
       (t['restaurantName'] ?? t['restaurant'] ?? 'Restaurant').toString();
 
+  /// 'Food Order' / 'Mart Order' for a trip, from the backend's per-order
+  /// `vertical`. Trips predating that field are Food, matching how the backend
+  /// buckets them in the earnings split.
+  bool _tripIsMart(Map<String, dynamic> t) => t['vertical'] == 'quick';
+
+  String _tripSourceLabel(Map<String, dynamic> t) =>
+      _tripIsMart(t) ? 'MART ORDER' : 'FOOD ORDER';
+
   String _tripStatus(Map<String, dynamic> t) => (t['status'] ?? '').toString();
 
   String _tripOrderId(Map<String, dynamic> t) =>
@@ -479,6 +487,28 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     SizedBox(height: 8.h),
                     Row(
                       children: [
+                        Container(
+                          margin: EdgeInsets.only(right: 8.w),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8.w,
+                            vertical: 3.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: (_tripIsMart(trip) ? Colors.teal : Colors.green)
+                                .withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            _tripSourceLabel(trip),
+                            style: TextStyle(
+                              color: _tripIsMart(trip)
+                                  ? Colors.teal[800]
+                                  : Colors.green[800],
+                              fontWeight: FontWeight.w800,
+                              fontSize: 9.sp,
+                            ),
+                          ),
+                        ),
                         if (_tripOrderId(trip).isNotEmpty)
                           Text(
                             '#${_tripOrderId(trip)}',
