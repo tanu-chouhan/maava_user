@@ -18,6 +18,8 @@ import 'home_state.dart';
 import 'widgets/deal_of_the_day_row.dart';
 import 'widgets/delivery_header.dart';
 import 'widgets/feature_highlights_row.dart';
+import 'widgets/bestsellers_row.dart';
+import 'widgets/featured_this_week_row.dart';
 import 'widgets/housefull_sale_banner.dart';
 import 'widgets/lowest_prices_ever_row.dart';
 import 'widgets/shop_by_category_row.dart';
@@ -156,6 +158,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: LowestPricesEverRow(
               products: state.sections.expand((s) => s.products).toList(),
               onProductTap: (p) => context.push(RoutePaths.productDetailsOf(p.id)),
+            ),
+          ),
+
+          // 4. BESTSELLERS (Category Collage Cards matching reference design 1:1)
+          SliverToBoxAdapter(
+            child: BestsellersRow(
+              categories: state.categories,
+              onCategoryTap: (catId) =>
+                  context.push(RoutePaths.subCategoryOf(catId)),
+              onSeeAll: () => context.go(RoutePaths.categories),
+            ),
+          ),
+
+          // 5. FEATURED THIS WEEK (Newly Launched, Price Drop, Festive Plum Cakes cards matching spec 1:1)
+          SliverToBoxAdapter(
+            child: FeaturedThisWeekRow(
+              onCardTap: (index) => context.push(RoutePaths.productListing),
             ),
           ),
 
