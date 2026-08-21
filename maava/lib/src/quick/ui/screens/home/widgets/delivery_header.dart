@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../domain/model/category.dart';
 import '../../../../di/app_providers.dart';
 import '../../../../navigation/route_paths.dart';
+import '../../../common/smart_scan.dart';
+import '../../../common/widgets/inputs/search_bar_widget.dart';
 import '../../notifications/notifications_provider.dart';
 
 /// Mart's Header section, matching the screenshot spec:
@@ -186,51 +188,15 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
 
           const SizedBox(height: 12),
 
-          // 2. SEARCH BAR ROW
+          // 2. SEARCH BAR ROW (Original SearchBarWidget with animated hints, mic & barcode scanner)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: GestureDetector(
+            child: SearchBarWidget(
+              readOnly: true,
+              categories: widget.categories.map((c) => c.name).toList(),
               onTap: () => context.push(RoutePaths.search),
-              child: Container(
-                height: 46,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.07),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.search_rounded,
-                      color: Color(0xFF4B5563),
-                      size: 22,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        "Search 'dal'",
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: const Color(0xFF6B7280),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    const Icon(
-                      Icons.tune_rounded,
-                      color: Color(0xFF4B5563),
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
+              onScanTap: () => SmartScan.run(context, ref),
+              onMicTap: () => context.push('${RoutePaths.search}?voice=1'),
             ),
           ),
 
