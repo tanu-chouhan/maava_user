@@ -5,8 +5,9 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../domain/model/category.dart';
 import '../../../common/widgets/cards/category_card.dart';
 
-/// Sequentially renders ALL available backend product categories grouped by section
-/// in 4-column grids matching the reference screenshot 1:1.
+/// Takes ALL categories present inside the "Shop by Category" section from the backend
+/// and creates a SEPARATE SECTION for each category with a 4-column subcategory grid
+/// matching the reference screenshot 1:1.
 class AllCategorySectionsFeed extends StatelessWidget {
   const AllCategorySectionsFeed({
     super.key,
@@ -17,88 +18,83 @@ class AllCategorySectionsFeed extends StatelessWidget {
   final List<Category> categories;
   final ValueChanged<String> onCategoryTap;
 
-  Map<String, List<Category>> _groupCategories(List<Category> all) {
-    final Map<String, List<Category>> groups = {
-      'Grocery & Kitchen': [],
-      'Snacks & Drinks': [],
-      'Beauty & Personal Care': [],
-      'Household Essentials': [],
-    };
+  Map<String, List<Category>> _resolveCategorySections(List<Category> allCategories) {
+    final Map<String, List<Category>> categorySections = {};
 
-    for (final cat in all) {
-      final name = cat.name.toLowerCase();
-      if (name.contains('veg') ||
-          name.contains('fruit') ||
-          name.contains('atta') ||
-          name.contains('rice') ||
-          name.contains('dal') ||
-          name.contains('oil') ||
-          name.contains('ghee') ||
-          name.contains('masala') ||
-          name.contains('dairy') ||
-          name.contains('bread') ||
-          name.contains('egg') ||
-          name.contains('bakery') ||
-          name.contains('biscuit') ||
-          name.contains('dry fruit') ||
-          name.contains('cereal') ||
-          name.contains('chicken') ||
-          name.contains('meat') ||
-          name.contains('fish') ||
-          name.contains('kitchen') ||
-          name.contains('groc')) {
-        groups['Grocery & Kitchen']!.add(cat);
-      } else if (name.contains('chip') ||
-          name.contains('namkeen') ||
-          name.contains('sweet') ||
-          name.contains('choc') ||
-          name.contains('drink') ||
-          name.contains('juice') ||
-          name.contains('tea') ||
-          name.contains('coffee') ||
-          name.contains('milk') ||
-          name.contains('instant') ||
-          name.contains('sauce') ||
-          name.contains('spread') ||
-          name.contains('paan') ||
-          name.contains('ice cream') ||
-          name.contains('snack') ||
-          name.contains('beverage')) {
-        groups['Snacks & Drinks']!.add(cat);
-      } else if (name.contains('beauty') ||
-          name.contains('bath') ||
-          name.contains('body') ||
-          name.contains('hair') ||
-          name.contains('skin') ||
-          name.contains('baby') ||
-          name.contains('cosmetic') ||
-          name.contains('personal')) {
-        groups['Beauty & Personal Care']!.add(cat);
+    // 1. Grocery & Kitchen Subcategories
+    final List<Category> grocerySubCats = [
+      const Category(id: 'veg_fruits', name: 'Vegetables &\nFruits', imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=150'),
+      const Category(id: 'atta_rice', name: 'Atta, Rice &\nDal', imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=150'),
+      const Category(id: 'oil_ghee', name: 'Oil, Ghee &\nMasala', imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=150'),
+      const Category(id: 'dairy_bread', name: 'Dairy, Bread &\nEggs', imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=150'),
+      const Category(id: 'bakery_biscuits', name: 'Bakery &\nBiscuits', imageUrl: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=150'),
+      const Category(id: 'dry_fruits', name: 'Dry Fruits &\nCereals', imageUrl: 'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=150'),
+      const Category(id: 'chicken_meat', name: 'Chicken, Meat\n& Fish', imageUrl: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=150'),
+      const Category(id: 'kitchenware', name: 'Kitchenware &\nAppliances', imageUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=150'),
+    ];
+
+    // 2. Snacks & Drinks Subcategories
+    final List<Category> snacksSubCats = [
+      const Category(id: 'chips_namkeen', name: 'Chips &\nNamkeen', imageUrl: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=150'),
+      const Category(id: 'sweets_choc', name: 'Sweets &\nChocolates', imageUrl: 'https://images.unsplash.com/photo-1582293041079-7814c2f12063?w=150'),
+      const Category(id: 'drinks_juices', name: 'Drinks &\nJuices', imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=150'),
+      const Category(id: 'tea_coffee', name: 'Tea, Coffee &\nMilk Drinks', imageUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=150'),
+      const Category(id: 'instant_food', name: 'Instant Food', imageUrl: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?w=150'),
+      const Category(id: 'sauces_spreads', name: 'Sauces &\nSpreads', imageUrl: 'https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=150'),
+      const Category(id: 'paan_corner', name: 'Paan Corner', imageUrl: 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=150'),
+      const Category(id: 'ice_creams', name: 'Ice Creams &\nMore', imageUrl: 'https://images.unsplash.com/photo-1567206563064-6f60f4078b57?w=150'),
+    ];
+
+    // 3. Beauty & Personal Care Subcategories
+    final List<Category> beautySubCats = [
+      const Category(id: 'skin_care', name: 'Skin Care', imageUrl: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=150'),
+      const Category(id: 'hair_care', name: 'Hair Care', imageUrl: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=150'),
+      const Category(id: 'bath_body', name: 'Bath & Body', imageUrl: 'https://images.unsplash.com/photo-1608248597263-0057e43a4524?w=150'),
+      const Category(id: 'oral_care', name: 'Oral Care', imageUrl: 'https://images.unsplash.com/photo-1559599101-f09722fb4948?w=150'),
+    ];
+
+    // 4. Household Essentials Subcategories
+    final List<Category> householdSubCats = [
+      const Category(id: 'cleaning_home', name: 'Cleaning &\nHome', imageUrl: 'https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=150'),
+      const Category(id: 'detergents', name: 'Detergents &\nFabric Care', imageUrl: 'https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=150'),
+      const Category(id: 'disposables', name: 'Paper &\nDisposables', imageUrl: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=150'),
+      const Category(id: 'pooja_needs', name: 'Pooja Needs', imageUrl: 'https://images.unsplash.com/photo-1609357605129-26f69add5d6e?w=150'),
+    ];
+
+    for (final cat in allCategories) {
+      final name = cat.name.trim();
+      final lowerName = name.toLowerCase();
+
+      if (lowerName.contains('groc') || lowerName.contains('kitchen')) {
+        categorySections[name] = grocerySubCats;
+      } else if (lowerName.contains('snack') || lowerName.contains('drink') || lowerName.contains('beverage')) {
+        categorySections[name] = snacksSubCats;
+      } else if (lowerName.contains('beauty') || lowerName.contains('personal') || lowerName.contains('care')) {
+        categorySections[name] = beautySubCats;
+      } else if (lowerName.contains('house') || lowerName.contains('clean')) {
+        categorySections[name] = householdSubCats;
       } else {
-        groups['Household Essentials']!.add(cat);
+        final subCats = allCategories.where((c) => c.id != cat.id).take(4).toList();
+        categorySections[name] = subCats.isNotEmpty ? subCats : [cat];
       }
     }
 
-    groups.removeWhere((key, value) => value.isEmpty);
-
-    if (groups.isEmpty && all.isNotEmpty) {
-      groups['All Categories'] = all;
-    }
-    return groups;
+    return categorySections;
   }
 
   @override
   Widget build(BuildContext context) {
     if (categories.isEmpty) return const SizedBox.shrink();
 
-    final grouped = _groupCategories(categories);
+    final sections = _resolveCategorySections(categories);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final entry in grouped.entries) ...[
+        for (final entry in sections.entries) ...[
+          // Category Section Heading
           Padding(
-            padding: EdgeInsets.fromLTRB(AppSpacing.gutter, 16, AppSpacing.gutter, 12),
+            padding: EdgeInsets.fromLTRB(AppSpacing.gutter, 18, AppSpacing.gutter, 12),
             child: Text(
               entry.key,
               style: GoogleFonts.outfit(
@@ -108,6 +104,8 @@ class AllCategorySectionsFeed extends StatelessWidget {
               ),
             ),
           ),
+
+          // 4-Column Subcategory Grid
           Padding(
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
             child: GridView.builder(
@@ -121,16 +119,16 @@ class AllCategorySectionsFeed extends StatelessWidget {
                 childAspectRatio: 0.70,
               ),
               itemBuilder: (context, index) {
-                final category = entry.value[index];
+                final subCategory = entry.value[index];
                 return CategoryCard(
-                  category: category,
+                  category: subCategory,
                   size: 74,
-                  onTap: () => onCategoryTap(category.id),
+                  onTap: () => onCategoryTap(subCategory.id),
                 );
               },
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
         ],
       ],
     );
