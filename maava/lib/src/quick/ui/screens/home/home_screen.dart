@@ -65,26 +65,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // Status-bar icons follow the app surface, not the banner.
-      //
-      // They used to be light because the header floated over a dark video; the
-      // header now sits on the app surface, so light icons rendered white on
-      // white and the clock vanished. Deriving from theme brightness also keeps
-      // them correct in dark mode.
-      value: Theme.of(context).brightness == Brightness.dark
-          ? SystemUiOverlayStyle.light.copyWith(
-              statusBarColor: Colors.transparent,
-            )
-          : SystemUiOverlayStyle.dark.copyWith(
-              statusBarColor: Colors.transparent,
-            ),
+      // Match status bar color seamlessly with the warm orange header
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // Dark icons for Android over orange
+        statusBarBrightness: Brightness.light, // Dark icons for iOS over orange
+      ),
       child: Scaffold(
         backgroundColor: context.colors.surface,
         body: Stack(
           children: [
             SafeArea(
-              // Top only: the bottom inset belongs to the nav bar, and the
-              // floating cards below are positioned against the raw edge.
+              top: false,
               bottom: false,
               child: Column(
                 children: [
