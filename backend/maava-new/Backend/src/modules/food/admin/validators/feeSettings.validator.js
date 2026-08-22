@@ -14,7 +14,7 @@ const feeSettingsUpsertSchema = z.object({
     deliveryFeeRanges: z.array(rangeSchema).optional(),
     platformFee: z.number().min(0).nullable().optional(),
     freeDeliveryThreshold: z.number().min(0).nullable().optional(),
-    tipPresets: z.array(z.number().min(0).max(5000)).max(6).optional(),
+    tipPresets: z.array(z.number().min(0).max(1000)).max(6).optional(),
     quickDeliveryFee: z.number().min(0).nullable().optional(),
     gstRate: z.number().min(0).max(100).nullable().optional(),
     isActive: z.boolean().optional()

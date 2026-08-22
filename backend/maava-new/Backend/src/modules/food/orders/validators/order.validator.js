@@ -88,7 +88,7 @@ export function validateCalculateOrderDto(body) {
         deliveryFleet: z.string().optional(),
         // Voluntary tip for the delivery partner. Capped so a fat-fingered or
         // crafted request cannot post an absurd amount; 0 clears it.
-        deliveryTip: z.number().min(0).max(5000).optional(),
+        deliveryTip: z.number().min(0).max(1000).optional(),
         deliveryMode: z.enum(['basic', 'quick']).optional(),
         deliveryAddress: z
             .object({
@@ -126,7 +126,7 @@ export function validateCreateOrderDto(body) {
         deliveryInstructions: z.string().optional(),
         // Voluntary tip for the delivery partner. Capped so a fat-fingered or
         // crafted request cannot post an absurd amount; 0 clears it.
-        deliveryTip: z.number().min(0).max(5000).optional(),
+        deliveryTip: z.number().min(0).max(1000).optional(),
         deliveryMode: z.enum(['basic', 'quick']).optional(),
         sendCutlery: z.boolean().optional(),
         // 'cash' is true COD, collected as notes at the door.
