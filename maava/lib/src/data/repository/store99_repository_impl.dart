@@ -20,7 +20,20 @@ class Store99RepositoryImpl implements Store99Repository {
 
   const Store99RepositoryImpl(this._remote, this._zoneId);
 
-  static const _promo = 'switch99';
+  /// Deliberately NOT sending `promo=switch99`.
+  ///
+  /// That server-side promo keeps anything whose price STRING contains "99" —
+  /// ₹199, ₹299, ₹990 — which is not what this screen means. Intersected with
+  /// the real rule below it left one dish in the whole catalogue, and nothing
+  /// at all once a cuisine was chosen.
+  ///
+  /// The rule that matters is `price <= 99`, applied here, which is also what
+  /// the screen promises: "meals at ₹99 or less".
+  static const _under99 = 99.0;
+
+  /// Fetch wide, then narrow: the ≤99 items are a minority of the catalogue, so
+  /// a small page would filter down to almost nothing.
+  static const _fetchLimit = 500;
 
   @override
   Future<ApiResponse<List<Store99Cuisine>>> getCuisines() {
@@ -29,7 +42,13 @@ class Store99RepositoryImpl implements Store99Repository {
       return [
         const Store99Cuisine(id: 'all', label: 'All', imagesPath: ''),
         ...categories.map(
-          (c) => Store99Cuisine(id: c.id, label: c.name, imagesPath: c.imageUrl),
+          (c) => Store99Cuisine(
+            id: c.id,
+            label: c.name,
+            imagesPath: c.imageUrl,
+            // The filter is a keyword match, so the name is what finds dishes.
+            slug: c.name,
+          ),
         ),
       ];
     });
@@ -45,11 +64,25 @@ class Store99RepositoryImpl implements Store99Repository {
     });
   }
 
+
+
   @override
-  Future<ApiResponse<List<Store99Product>>> getTrendingDishes() {
+  Future<ApiResponse<List<Store99Product>>> getTrendingDishes({
+    String cuisineId = 'all',
+  }) {
     return _guard(() async {
-      final foods = await _remote.getPublicFoods(zoneId: _zoneId(), promo: _promo, limit: 100);
-      return foods.where((f) => f.price <= 99.0).map(_toProduct).toList();
+      // Cuisine-scoped like the explore grid. Selecting 'Idli' used to leave
+      // this row showing pizza and dosa, so the screen contradicted the chip
+      // the shopper had just tapped.
+      final foods = await _remote.getPublicFoods(
+        zoneId: _zoneId(),
+        categorySlug: cuisineId == 'all' ? null : cuisineId,
+        limit: _fetchLimit,
+      );
+      return foods
+          .where((f) => f.price <= _under99)
+          .map(_toProduct)
+          .toList();
     });
   }
 
@@ -62,12 +95,12 @@ class Store99RepositoryImpl implements Store99Repository {
     return _guard(() async {
       final foods = await _remote.getPublicFoods(
         zoneId: _zoneId(),
-        promo: _promo,
         categorySlug: cuisineId == 'all' ? null : cuisineId,
-        limit: 200,
+        limit: _fetchLimit,
       );
 
-      final eligibleFoods = foods.where((f) => f.price <= 99.0).toList();
+      final eligibleFoods =
+          foods.where((f) => f.price <= _under99).toList();
 
       // Client-side pagination windowing applied on eligible (<= 99) products
       final start = (page - 1) * limit;

@@ -19,7 +19,7 @@ final searchLocalDataSourceProvider = Provider<SearchLocalDataSource>((ref) {
 final searchRemoteDataSourceProvider = Provider<SearchRemoteDataSource>((ref) {
   return SearchRemoteDataSourceImpl(
     ref.watch(catalogRemoteDataSourceProvider),
-    () => ref.read(currentZoneIdProvider),
+    () => ref.read(catalogZoneIdProvider),
   );
 });
 

@@ -533,6 +533,19 @@ export async function createOrder(userId, dto) {
       throw new ValidationError("Cash on Delivery is no longer available. Please pay online.");
     }
     const isCash = paymentMethod === "cash";
+    // Per-account COD switch (Admin → COD Access). Checked server-side because
+    // the app only HIDES the option: an older build, or a crafted request, can
+    // still ask for cash. Read fresh rather than trusting the JWT, so revoking
+    // COD takes effect on the customer's very next order instead of after they
+    // sign in again.
+    if (isCash) {
+      const buyer = await FoodUser.findById(userId).select("codEnabled").lean();
+      if (buyer && buyer.codEnabled === false) {
+        throw new ValidationError(
+          "Cash on Delivery is not available on your account. Please pay online.",
+        );
+      }
+    }
     const isWallet = paymentMethod === "wallet";
 
     const pricingResult = await calculateOrderPricing(

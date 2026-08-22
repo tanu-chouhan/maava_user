@@ -67,3 +67,16 @@ class ZoneViewModel extends AsyncNotifier<ZoneModel> {
 final currentZoneIdProvider = Provider<String?>((ref) {
   return ref.watch(zoneViewModelProvider).value?.zoneId;
 });
+
+/// Zone id for FOOD CATALOGUE listings — deliberately null.
+///
+/// Food restaurants carry no zoneId, so scoping listings by the detected zone
+/// empties the section: with the Indore zone the catalogue drops from 25
+/// restaurants to 2 and from 111 dishes to 6, and the 99 Store's Idli chip to
+/// none at all. This went unnoticed until Mart zones were created — before
+/// that, detection found no zone and every call was already unscoped.
+///
+/// Zone filtering is live for Mart only. Point this back at
+/// [currentZoneIdProvider] once food restaurants are assigned zones. Checkout
+/// keeps using the real zone, which is about delivery fees, not the catalogue.
+final catalogZoneIdProvider = Provider<String?>((ref) => null);

@@ -66,7 +66,7 @@ class RestaurantListViewModel extends Notifier<RestaurantListState> {
   @override
   RestaurantListState build() {
     // Re-scope the feed when the detected zone changes.
-    ref.listen(currentZoneIdProvider, (previous, next) {
+    ref.listen(catalogZoneIdProvider, (previous, next) {
       if (previous != next) unawaited(refresh());
     });
     unawaited(refresh());
@@ -78,7 +78,7 @@ class RestaurantListViewModel extends Notifier<RestaurantListState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final items = await ref.read(catalogRemoteDataSourceProvider).getRestaurants(
-            zoneId: ref.read(currentZoneIdProvider),
+            zoneId: ref.read(catalogZoneIdProvider),
             page: 1,
             limit: _pageSize,
           );
@@ -101,7 +101,7 @@ class RestaurantListViewModel extends Notifier<RestaurantListState> {
     final next = state.page + 1;
     try {
       final items = await ref.read(catalogRemoteDataSourceProvider).getRestaurants(
-            zoneId: ref.read(currentZoneIdProvider),
+            zoneId: ref.read(catalogZoneIdProvider),
             page: next,
             limit: _pageSize,
           );

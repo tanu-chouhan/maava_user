@@ -11,7 +11,7 @@ final restaurantRepositoryProvider = Provider<RestaurantRepository>((ref) {
     ref.watch(catalogRemoteDataSourceProvider),
     // Read (not watch) through a callback so a zone arriving later is picked up
     // on the next call without rebuilding the repository mid-flight.
-    () => ref.read(currentZoneIdProvider),
+    () => ref.read(catalogZoneIdProvider),
   );
 });
 

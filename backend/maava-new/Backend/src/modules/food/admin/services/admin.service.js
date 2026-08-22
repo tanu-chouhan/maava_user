@@ -1539,6 +1539,7 @@ export async function getCustomers(query = {}) {
                         countryCode: 1,
                         isVerified: 1,
                         isActive: 1,
+                        codEnabled: 1,
                         createdAt: 1,
                         profileImage: 1,
                         totalOrder: 1,
@@ -1554,7 +1555,7 @@ export async function getCustomers(query = {}) {
                 .sort(sort)
                 .skip(skip)
                 .limit(limit)
-                .select('name email phone countryCode isVerified isActive createdAt profileImage')
+                .select('name email phone countryCode isVerified isActive codEnabled createdAt profileImage')
                 .lean(),
             FoodUser.countDocuments(filter),
         ]);
@@ -1687,6 +1688,22 @@ export async function updateCustomerStatus(id, isActive) {
         await FoodRefreshToken.deleteMany({ userId: updated._id });
     }
     return updated;
+}
+
+/**
+ * Turn Cash on Delivery on or off for one customer.
+ *
+ * Unlike [updateCustomerStatus] this does not touch refresh tokens — the
+ * customer stays signed in, they simply lose the cash option at checkout.
+ */
+export async function updateCustomerCodAccess(id, codEnabled) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const updatedDoc = await FoodUser.findByIdAndUpdate(
+        id,
+        { $set: { codEnabled: Boolean(codEnabled) } },
+        { new: true }
+    ).select('name email phone countryCode isVerified isActive codEnabled createdAt profileImage');
+    return updatedDoc ? updatedDoc.toObject() : null;
 }
 
 export async function getSupportTickets(query = {}) {
@@ -2241,6 +2258,12 @@ export async function upsertFeeSettings(body) {
         if (body.gstRate === null) $unset.gstRate = 1;
         else if (body.gstRate !== undefined) $set.gstRate = body.gstRate;
 
+        // Order value at which delivery becomes free. Null clears the offer.
+        if (body.freeDeliveryThreshold === null) $unset.freeDeliveryThreshold = 1;
+        else if (body.freeDeliveryThreshold !== undefined) {
+            $set.freeDeliveryThreshold = body.freeDeliveryThreshold;
+        }
+
         if (body.isActive !== undefined) $set.isActive = body.isActive;
 
         const update = {};
@@ -2258,6 +2281,9 @@ export async function upsertFeeSettings(body) {
     };
     if (body.deliveryFee !== undefined && body.deliveryFee !== null) payload.deliveryFee = body.deliveryFee;
     if (body.platformFee !== undefined && body.platformFee !== null) payload.platformFee = body.platformFee;
+    if (body.freeDeliveryThreshold !== undefined && body.freeDeliveryThreshold !== null) {
+        payload.freeDeliveryThreshold = body.freeDeliveryThreshold;
+    }
     if (body.quickDeliveryFee !== undefined && body.quickDeliveryFee !== null) payload.quickDeliveryFee = body.quickDeliveryFee;
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
 
@@ -3042,6 +3068,23 @@ export async function updateRestaurantById(id, body = {}) {
         const name = toStr(body.name !== undefined ? body.name : body.restaurantName);
         if (!name) throw new ValidationError('Restaurant name cannot be empty');
         doc.restaurantName = name;
+    }
+
+    // Zone assignment. The admin could SEE a store's zone but never change it:
+    // this function populated `zoneId` on the way out and ignored it on the way
+    // in, so a store was stuck in whatever zone it was created with.
+    if (body.zoneId !== undefined) {
+        const nextZoneId = toStr(body.zoneId);
+        if (!nextZoneId) {
+            doc.zoneId = undefined;
+        } else {
+            if (!mongoose.Types.ObjectId.isValid(nextZoneId)) {
+                throw new ValidationError('Invalid zone id');
+            }
+            const zone = await FoodZone.findById(nextZoneId).select('_id').lean();
+            if (!zone) throw new ValidationError('Zone not found');
+            doc.zoneId = zone._id;
+        }
     }
 
     if (body.ownerName !== undefined) doc.ownerName = toStr(body.ownerName);
@@ -4032,6 +4075,20 @@ export async function updateFood(id, body) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const doc = await FoodItem.findById(id);
     if (!doc) return null;
+
+    // Move an item between stores. Applied BEFORE the restaurant is loaded so
+    // every check below -- the pure-veg policy in particular -- is made against
+    // the store the item is moving TO, not the one it is leaving.
+    if (body.restaurantId !== undefined) {
+        const nextStoreId = String(body.restaurantId || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(nextStoreId)) {
+            throw new ValidationError('Invalid restaurant id');
+        }
+        const target = await FoodRestaurant.findById(nextStoreId).select('_id').lean();
+        if (!target) throw new ValidationError('Restaurant not found');
+        doc.restaurantId = target._id;
+    }
+
     const restaurant = await FoodRestaurant.findById(doc.restaurantId)
         .select('pureVegRestaurant')
         .lean();

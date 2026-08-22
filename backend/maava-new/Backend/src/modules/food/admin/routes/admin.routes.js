@@ -152,6 +152,7 @@ router.get(
 );
 router.get('/customers/:id', adminController.getCustomerById);
 router.patch('/customers/:id/status', adminController.updateCustomerStatus);
+router.patch('/customers/:id/cod', adminController.updateCustomerCodAccess);
 
 // ----- Safety / Emergency Reports -----
 router.get('/safety-emergency-reports', adminController.getSafetyEmergencyReports);

@@ -126,6 +126,12 @@ export const adminSidebarMenu = [
       },
       {
         type: "link",
+        label: "COD Access",
+        path: "/admin/store/cod-access",
+        icon: "Wallet",
+      },
+      {
+        type: "link",
         label: "Support Tickets (User & Seller)",
         path: "/admin/store/support-tickets",
         icon: "MessageSquare",
@@ -201,6 +207,7 @@ export const adminSidebarMenu = [
     items: [
       { type: "link", label: "Landing Page Management", path: "/admin/store/hero-banner-management", icon: "Image" },
       { type: "link", label: "Promotional Banners", path: "/admin/store/promotional-banner", icon: "Megaphone" },
+      { type: "link", label: "Housefull Sale (Mart)", path: "/admin/store/mart-category-themes", icon: "Palette" },
 // { type: "link", label: "General Banners", path: "/admin/store/banners", icon: "Image" },
     ],
   },

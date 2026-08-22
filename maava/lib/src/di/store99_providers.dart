@@ -9,7 +9,7 @@ import 'catalog_providers.dart';
 final store99RepositoryProvider = Provider<Store99Repository>((ref) {
   return Store99RepositoryImpl(
     ref.watch(catalogRemoteDataSourceProvider),
-    () => ref.read(currentZoneIdProvider),
+    () => ref.read(catalogZoneIdProvider),
   );
 });
 

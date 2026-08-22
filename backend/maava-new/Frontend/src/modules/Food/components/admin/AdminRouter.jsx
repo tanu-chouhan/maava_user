@@ -58,6 +58,7 @@ const ContactMessages = lazy(() => import("@food/pages/admin/ContactMessages"));
 const SafetyEmergencyReports = lazy(() => import("@food/pages/admin/SafetyEmergencyReports"));
 // Customer Management
 const Customers = lazy(() => import("@food/pages/admin/Customers"));
+const CodAccess = lazy(() => import("@food/pages/admin/CodAccess"));
 const SupportTickets = lazy(() => import("@food/pages/admin/SupportTickets"));
 const AddFund = lazy(() => import("@food/pages/admin/wallet/AddFund"));
 const Bonus = lazy(() => import("@food/pages/admin/wallet/Bonus"));
@@ -104,6 +105,7 @@ const EmployeeList = lazy(() => import("@food/pages/admin/employees/EmployeeList
 const BusinessSetup = lazy(() => import("@food/pages/admin/settings/BusinessSetup"));
 const FeatureSettings = lazy(() => import("@food/pages/admin/settings/FeatureSettings"));
 const PowerScanning = lazy(() => import("@food/pages/admin/settings/PowerScanning"));
+const MartCategoryThemes = lazy(() => import("@food/pages/admin/settings/MartCategoryThemes"));
 const EmailTemplate = lazy(() => import("@food/pages/admin/settings/EmailTemplate"));
 const ThemeSettings = lazy(() => import("@food/pages/admin/settings/ThemeSettings"));
 const Gallery = lazy(() => import("@food/pages/admin/settings/Gallery"));
@@ -338,6 +340,7 @@ export default function AdminRouter() {
             <Route path="safety-emergency-reports" element={<SafetyEmergencyReports />} />
             
             <Route path="customers" element={<Customers />} />
+            <Route path="cod-access" element={<CodAccess />} />
             <Route path="support-tickets" element={<SupportTickets />} />
             <Route path="wallet/add-fund" element={<AddFund />} />
             <Route path="wallet/bonus" element={<Bonus />} />
@@ -416,6 +419,7 @@ export default function AdminRouter() {
             <Route path="clean-database" element={<CleanDatabase />} />
             <Route path="addon-activation" element={<AddonActivation />} />
             <Route path="hero-banner-management" element={<LandingPageManagement />} />
+            <Route path="mart-category-themes" element={<MartCategoryThemes />} />
             {/* <Route path="dining-management" element={<DiningManagement />} /> */}
             {/* <Route path="dining-list" element={<DiningList />} /> */}
           </Route>
