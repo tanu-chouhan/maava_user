@@ -19,7 +19,7 @@ class RouteNames {
   static const String allOffers = '/all-offers';
   static const String store99 = '/store-99';
 
-  /// HiberMart opener, shown on every switch into Mart.
+  /// MaavaMart opener, shown on every switch into Mart.
   static const String martSplash = '/mart-splash';
   static const String notifications = '/notifications';
   static const String orderDetails = '/orders/details/:id';

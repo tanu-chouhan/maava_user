@@ -114,6 +114,20 @@ class QuickBrand {
     accent: AppColors.tealDark,
   );
 
+  /// Builds a brand from a single colour — what the admin panel actually sets.
+  ///
+  /// The accent is derived rather than configured: it is only ever a pressed /
+  /// emphasis shade of the seed, so a second colour field in the panel would be
+  /// one more thing to get wrong. -0.12 lightness reproduces the shipped teal
+  /// pair (#068483 → #045353) closely enough that the default look is unchanged.
+  factory QuickBrand.fromSeed(Color seed) {
+    final hsl = HSLColor.fromColor(seed);
+    return QuickBrand(
+      seed: seed,
+      accent: hsl.withLightness((hsl.lightness - 0.12).clamp(0.0, 1.0)).toColor(),
+    );
+  }
+
   /// Ink that stays legible on [seed], whichever end of the scale it sits at.
   Color get onSeed => AppColors.onPlate(seed);
 

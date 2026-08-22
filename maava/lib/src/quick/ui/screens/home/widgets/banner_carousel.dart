@@ -32,7 +32,7 @@ class BannerCarousel extends StatefulWidget {
 }
 
 /// Shape of the promo strip: quick-commerce banner ratio.
-const double _cardAspect = 1.65;
+const double _cardAspect = 2.35;
 
 /// PageView fraction expanded horizontally to fill almost full screen width.
 const double _viewportFraction = 0.98;
@@ -276,7 +276,7 @@ class _HeroBannerCard extends StatelessWidget {
           // Left Content
           Positioned.fill(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(AppSpacing.gutter, 14, 68, 14),
+              padding: EdgeInsets.fromLTRB(AppSpacing.gutter, 8, 68, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -284,20 +284,20 @@ class _HeroBannerCard extends StatelessWidget {
                   Text(
                     'FRESHNESS YOU CAN TRUST',
                     style: GoogleFonts.inter(
-                      fontSize: 9,
+                      fontSize: 8,
                       fontWeight: FontWeight.w800,
                       color: context.semantic.accent,
                       letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: RichText(
                       text: TextSpan(
                         style: GoogleFonts.outfit(
-                          fontSize: 21,
+                          fontSize: 16,
                           fontWeight: FontWeight.w900,
                           color: context.colors.onSurface,
                           height: 1.1,
@@ -306,7 +306,7 @@ class _HeroBannerCard extends StatelessWidget {
                           TextSpan(
                             text: banner.title.trim().isNotEmpty
                                 ? '${banner.title}\n'
-                                : 'Fresh Groceries,\n',
+                                : 'Fresh Groceries, ',
                           ),
                           TextSpan(
                             text: 'Better Living',
@@ -316,26 +316,26 @@ class _HeroBannerCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
                   Text(
-                    'Get the freshest fruits, vegetables, and daily essentials delivered to your doorstep.',
-                    maxLines: 2,
+                    'Get fresh fruits, vegetables & daily essentials.',
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF4B5563),
-                      height: 1.15,
+                      height: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       // SHOP NOW button
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.gutter,
-                          vertical: 8,
+                          horizontal: 12,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
                           color: context.semantic.accent,
@@ -356,26 +356,26 @@ class _HeroBannerCard extends StatelessWidget {
                                   ? banner.ctaText
                                   : 'SHOP NOW',
                               style: GoogleFonts.inter(
-                                fontSize: 10,
+                                fontSize: 9,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 3),
                             const Icon(
                               Icons.arrow_forward_rounded,
-                              size: 12,
+                              size: 10,
                               color: Colors.white,
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       // EXPLORE DEALS button
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                          horizontal: 10,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
                           color: context.colors.surface,
@@ -385,7 +385,7 @@ class _HeroBannerCard extends StatelessWidget {
                         child: Text(
                           'EXPLORE DEALS',
                           style: GoogleFonts.inter(
-                            fontSize: 9.5,
+                            fontSize: 8.5,
                             fontWeight: FontWeight.w800,
                             color: context.colors.onSurface,
                           ),

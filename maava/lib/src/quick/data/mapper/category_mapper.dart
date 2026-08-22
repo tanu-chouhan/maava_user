@@ -9,7 +9,10 @@ abstract final class CategoryMapper {
         // rather than a random stock photo.
         imageUrl: dto.image.trim(),
         sortOrder: dto.sortOrder,
+        parentId: dto.parentId,
+        showInHeader: dto.showInHeader,
         foodTypeScope: dto.foodTypeScope,
+        itemCount: dto.itemCount,
       );
 
   static List<Category> toDomainList(List<CategoryDto> dtos) =>

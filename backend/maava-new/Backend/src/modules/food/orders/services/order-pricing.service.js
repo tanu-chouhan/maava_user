@@ -510,11 +510,16 @@ export async function calculateOrderPricing(userId, dto, options = {}) {
 
   const deliveryFeeGst = computeDeliveryFeeGst(deliveryFee);
 
+  // Voluntary, untaxed, and never discounted: it is a gift to the rider, not a
+  // charge for goods, so it is added after the discount rather than being part
+  // of the taxable base.
+  const deliveryTip = round2(Math.max(0, Number(dto.deliveryTip) || 0));
+
   const total = round2(
     Math.max(
       0,
       subtotal + packagingFee + deliveryFee + deliveryFeeGst + platformFee + tax - discount,
-    ),
+    ) + deliveryTip,
   );
 
   const basePricing = {
@@ -525,6 +530,7 @@ export async function calculateOrderPricing(userId, dto, options = {}) {
     deliveryFeeGst,
     platformFee,
     discount,
+    deliveryTip,
     total,
     currency: "INR",
     couponCode: appliedCoupon?.code || codeRaw || null,

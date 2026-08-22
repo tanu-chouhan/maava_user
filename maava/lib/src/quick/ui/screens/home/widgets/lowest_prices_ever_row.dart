@@ -60,17 +60,15 @@ class LowestPricesEverRow extends ConsumerWidget {
                 Container(width: 20, height: 1.5, color: const Color(0xFF9CA3AF)),
                 const SizedBox(width: 8),
                 BouncingHeading(
-                  child: Text(
-                    'LOWEST PRICES EVER',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      letterSpacing: 0.5,
-                      color: const Color(0xFF111827),
-                      shadows: const [
-                        Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black12),
-                      ],
-                    ),
+                  text: 'LOWEST PRICES EVER',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    letterSpacing: 0.5,
+                    color: const Color(0xFF111827),
+                    shadows: const [
+                      Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black12),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),

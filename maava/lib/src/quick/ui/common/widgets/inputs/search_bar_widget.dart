@@ -207,18 +207,21 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                     ),
                   ),
                 ),
-              GestureDetector(
-                onTap: widget.onScanTap,
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                  child: Icon(
-                    Icons.qr_code_scanner_rounded,
-                    size: 22,
-                    color: context.colors.primary,
+              // Conditional like the mic: a surface without a scanner would
+              // otherwise show a scan button that does nothing.
+              if (widget.onScanTap != null)
+                GestureDetector(
+                  onTap: widget.onScanTap,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                    child: Icon(
+                      Icons.qr_code_scanner_rounded,
+                      size: 22,
+                      color: context.colors.primary,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

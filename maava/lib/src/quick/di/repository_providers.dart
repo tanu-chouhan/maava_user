@@ -38,6 +38,7 @@ import '../platform/location/location_service.dart';
 import '../platform/payment/razorpay_checkout.dart';
 import '../platform/permission/permission_service.dart';
 import '../platform/realtime/realtime_socket.dart';
+import 'zone_providers.dart';
 
 /// Overridden in `main()` once SharedPreferences has loaded.
 final localStorageProvider = Provider<LocalStorage>(
@@ -136,18 +137,27 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 final productRepositoryProvider = Provider<ProductRepository>(
-  (ref) => ApiProductRepository(ref.watch(apiClientProvider)),
+  // The zone is read through a callback rather than captured, so switching
+  // address re-scopes every later request without rebuilding the repository.
+  (ref) => ApiProductRepository(
+    ref.watch(apiClientProvider),
+    zoneId: () => ref.read(martZoneIdProvider),
+  ),
 );
 
 final categoryRepositoryProvider = Provider<CategoryRepository>(
   (ref) => ApiCategoryRepository(
     ref.watch(apiClientProvider),
     productRepository: ref.watch(productRepositoryProvider),
+    zoneId: () => ref.read(martZoneIdProvider),
   ),
 );
 
 final catalogContentRepositoryProvider = Provider<CatalogContentRepository>(
-  (ref) => ApiCatalogContentRepository(ref.watch(apiClientProvider)),
+  (ref) => ApiCatalogContentRepository(
+    ref.watch(apiClientProvider),
+    zoneId: () => ref.read(martZoneIdProvider),
+  ),
 );
 
 final cartRepositoryProvider = Provider<CartRepository>(

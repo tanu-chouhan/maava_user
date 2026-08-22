@@ -31,37 +31,35 @@ class _PromoBannerCarouselState extends State<PromoBannerCarousel> {
   // from under a finger that is mid-swipe.
   bool _userInteracting = false;
 
+  static const _initialPage = 10000;
+
   @override
   void initState() {
     super.initState();
-    _controller = PageController(viewportFraction: 0.9);
+    final initial = widget.banners.isNotEmpty
+        ? _initialPage - (_initialPage % widget.banners.length)
+        : _initialPage;
+    _controller = PageController(viewportFraction: 0.9, initialPage: initial);
     _startTimer();
   }
 
   @override
   void didUpdateWidget(PromoBannerCarousel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // The list can shrink on refresh (a banner expiring, an admin deleting one).
-    // Without this the timer keeps animating to an index that no longer exists.
     if (widget.banners.length != oldWidget.banners.length) {
-      _index = _index.clamp(0, (widget.banners.length - 1).clamp(0, 1 << 30));
       _startTimer();
     }
   }
 
   void _startTimer() {
     _timer?.cancel();
-    // One banner cannot rotate, and a repeating timer that always no-ops just
-    // wakes the UI thread every few seconds for nothing.
     if (widget.banners.length < 2) return;
 
     _timer = Timer.periodic(_rotateEvery, (_) {
       if (!mounted || _userInteracting || !_controller.hasClients) return;
-      final next = (_index + 1) % widget.banners.length;
-      _controller.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeOutCubic,
+      _controller.nextPage(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
       );
     });
   }
@@ -114,10 +112,10 @@ class _PromoBannerCarouselState extends State<PromoBannerCarousel> {
             },
             child: PageView.builder(
               controller: _controller,
-              itemCount: widget.banners.length,
-              onPageChanged: (i) => setState(() => _index = i),
+              onPageChanged: (i) =>
+                  setState(() => _index = i % widget.banners.length),
               itemBuilder: (context, i) {
-                final banner = widget.banners[i];
+                final banner = widget.banners[i % widget.banners.length];
                 return Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6.w),
                   child: GestureDetector(

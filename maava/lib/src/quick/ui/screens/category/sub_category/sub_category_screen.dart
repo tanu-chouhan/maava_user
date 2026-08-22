@@ -10,6 +10,7 @@ import '../../../../navigation/route_paths.dart';
 import '../../../common/cart_actions.dart';
 import '../../../common/widgets/loaders/product_card_skeleton.dart';
 import '../../../common/widgets/misc/app_network_image.dart';
+import '../../../common/widgets/misc/status_bar_style.dart';
 import '../../../common/widgets/states/empty_state_widget.dart';
 import '../../../common/widgets/states/error_state_widget.dart';
 import '../../cart/widgets/cart_summary_bar.dart';
@@ -33,41 +34,53 @@ class SubCategoryScreen extends ConsumerWidget {
     final state = ref.watch(subCategoryProvider(categoryId));
     final title = category?.name ?? '';
 
-    return Scaffold(
-      backgroundColor: context.colors.surface,
-      bottomNavigationBar: const CartSummaryBar(),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top Quick-Commerce Header
-            _buildHeader(context, title, ref.watch(selectedAddressProvider)?.shortLine),
+    // This screen set no status-bar style at all, so it inherited whatever the
+    // screen behind it had pushed — arriving from a dark category header left
+    // white icons on this white header, and the clock vanished.
+    return StatusBarStyle(
+      background: context.colors.surface,
+      child: Scaffold(
+        backgroundColor: context.colors.surface,
+        bottomNavigationBar: const CartSummaryBar(),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Top Quick-Commerce Header
+              _buildHeader(
+                context,
+                title,
+                ref.watch(selectedAddressProvider)?.shortLine,
+              ),
 
-            // Horizontal Filter & Sort Chips Row
-            _buildFilterBar(context, ref, state),
+              // Horizontal Filter & Sort Chips Row
+              _buildFilterBar(context, ref, state),
 
-            // Main Body: Subcategory Rail on left, Product Grid on right
-            Expanded(
-              child: switch (state) {
-                _ when state.failure != null && state.allProducts.isEmpty =>
-                  ErrorStateWidget(
-                    failure: state.failure!,
-                    onRetry: () =>
-                        ref.read(subCategoryProvider(categoryId).notifier).load(),
-                  ),
-                _ when state.isLoading && state.allProducts.isEmpty =>
-                  const _LoadingLayout(),
-                _ when state.visibleProducts.isEmpty &&
-                        state.hasActiveFilters =>
-                  EmptyStateWidget(
-                    icon: Icons.filter_alt_off_rounded,
-                    title: 'No items match these filters',
-                    message: 'Try widening the price range or clearing a filter.',
-                    actionLabel: 'Clear filters',
-                    onAction: () => ref
-                        .read(subCategoryProvider(categoryId).notifier)
-                        .clearFilters(),
-                  ),
-                _ when state.isEmpty => EmptyStateWidget(
+              // Main Body: Subcategory Rail on left, Product Grid on right
+              Expanded(
+                child: switch (state) {
+                  _ when state.failure != null && state.allProducts.isEmpty =>
+                    ErrorStateWidget(
+                      failure: state.failure!,
+                      onRetry: () => ref
+                          .read(subCategoryProvider(categoryId).notifier)
+                          .load(),
+                    ),
+                  _ when state.isLoading && state.allProducts.isEmpty =>
+                    const _LoadingLayout(),
+                  _
+                      when state.visibleProducts.isEmpty &&
+                          state.hasActiveFilters =>
+                    EmptyStateWidget(
+                      icon: Icons.filter_alt_off_rounded,
+                      title: 'No items match these filters',
+                      message:
+                          'Try widening the price range or clearing a filter.',
+                      actionLabel: 'Clear filters',
+                      onAction: () => ref
+                          .read(subCategoryProvider(categoryId).notifier)
+                          .clearFilters(),
+                    ),
+                  _ when state.isEmpty => EmptyStateWidget(
                     icon: Icons.inventory_2_outlined,
                     title: 'Nothing here yet',
                     message:
@@ -75,7 +88,7 @@ class SubCategoryScreen extends ConsumerWidget {
                     actionLabel: 'All categories',
                     onAction: () => context.go(RoutePaths.categories),
                   ),
-                _ => Row(
+                  _ => Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Left Rail (SubCategories)
@@ -94,11 +107,11 @@ class SubCategoryScreen extends ConsumerWidget {
                             itemCount: state.visibleProducts.length,
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 8,
-                              crossAxisSpacing: 8,
-                              childAspectRatio: 0.52,
-                            ),
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 8,
+                                  crossAxisSpacing: 8,
+                                  childAspectRatio: 0.52,
+                                ),
                             itemBuilder: (context, index) {
                               final product = state.visibleProducts[index];
                               return _BrowseProductCard(
@@ -115,9 +128,10 @@ class SubCategoryScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-              },
-            ),
-          ],
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -132,7 +146,9 @@ class SubCategoryScreen extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: BoxDecoration(
         color: context.colors.surface,
-        border: Border(bottom: BorderSide(color: context.semantic.border, width: 1)),
+        border: Border(
+          bottom: BorderSide(color: context.semantic.border, width: 1),
+        ),
       ),
       child: Row(
         children: [
@@ -147,7 +163,11 @@ class SubCategoryScreen extends ConsumerWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: context.semantic.border),
               ),
-              child: Icon(Icons.arrow_back, size: 20, color: context.colors.onSurface),
+              child: Icon(
+                Icons.arrow_back,
+                size: 20,
+                color: context.colors.onSurface,
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -159,7 +179,10 @@ class SubCategoryScreen extends ConsumerWidget {
               children: [
                 Text(
                   categoryTitle,
-                  style: context.text.titleLarge!.copyWith(fontWeight: FontWeight.w800, color: context.colors.onSurface),
+                  style: context.text.titleLarge!.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: context.colors.onSurface,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -168,17 +191,27 @@ class SubCategoryScreen extends ConsumerWidget {
                   children: [
                     Text(
                       "Delivering to : ",
-                      style: context.text.bodySmall!.copyWith(fontWeight: FontWeight.w700, color: context.semantic.success),
+                      style: context.text.bodySmall!.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: context.semantic.success,
+                      ),
                     ),
                     Flexible(
                       child: Text(
                         deliveryAddress ?? 'Select an address',
-                        style: context.text.bodySmall!.copyWith(fontWeight: FontWeight.w500, color: context.semantic.textSecondary),
+                        style: context.text.bodySmall!.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: context.semantic.textSecondary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Icon(Icons.arrow_drop_down, size: 16, color: context.semantic.textSecondary),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      size: 16,
+                      color: context.semantic.textSecondary,
+                    ),
                   ],
                 ),
               ],
@@ -196,7 +229,11 @@ class SubCategoryScreen extends ConsumerWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: context.semantic.border),
               ),
-              child: Icon(Icons.search_rounded, size: 20, color: context.colors.onSurface),
+              child: Icon(
+                Icons.search_rounded,
+                size: 20,
+                color: context.colors.onSurface,
+              ),
             ),
           ),
           // Category sharing is deliberately absent: the backend renders share
@@ -212,7 +249,11 @@ class SubCategoryScreen extends ConsumerWidget {
   /// The chip row. Every chip opens the filter sheet focused on its own
   /// section; "Filters" opens all of them. Selections are reflected in the chip
   /// itself so the row doubles as the active-filter summary.
-  Widget _buildFilterBar(BuildContext context, WidgetRef ref, SubCategoryState state) {
+  Widget _buildFilterBar(
+    BuildContext context,
+    WidgetRef ref,
+    SubCategoryState state,
+  ) {
     final controller = ref.read(subCategoryProvider(categoryId).notifier);
 
     final chips = <_FilterChipSpec>[
@@ -231,7 +272,9 @@ class SubCategoryScreen extends ConsumerWidget {
         section: _FilterSection.sort,
       ),
       _FilterChipSpec(
-        label: state.diet == DietFilter.any ? 'Diet Preference' : state.diet.label,
+        label: state.diet == DietFilter.any
+            ? 'Diet Preference'
+            : state.diet.label,
         active: state.diet != DietFilter.any,
         section: _FilterSection.diet,
       ),
@@ -241,7 +284,9 @@ class SubCategoryScreen extends ConsumerWidget {
         section: _FilterSection.brand,
       ),
       _FilterChipSpec(
-        label: state.priceBand == PriceBand.any ? 'Price' : state.priceBand.label,
+        label: state.priceBand == PriceBand.any
+            ? 'Price'
+            : state.priceBand.label,
         active: state.priceBand != PriceBand.any,
         section: _FilterSection.price,
       ),
@@ -259,7 +304,8 @@ class SubCategoryScreen extends ConsumerWidget {
         itemBuilder: (context, index) {
           final chip = chips[index];
           return InkWell(
-            onTap: () => _openFilterSheet(context, ref, controller, chip.section),
+            onTap: () =>
+                _openFilterSheet(context, ref, controller, chip.section),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -285,7 +331,9 @@ class SubCategoryScreen extends ConsumerWidget {
                     chip.label,
                     style: context.text.labelMedium!.copyWith(
                       color: context.colors.onSurface,
-                      fontWeight: chip.active ? FontWeight.w700 : FontWeight.w600,
+                      fontWeight: chip.active
+                          ? FontWeight.w700
+                          : FontWeight.w600,
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -308,22 +356,21 @@ class SubCategoryScreen extends ConsumerWidget {
     WidgetRef ref,
     SubCategoryController controller,
     _FilterSection section,
-  ) =>
-      AppBottomSheet.show<void>(
-        context,
-        title: switch (section) {
-          _FilterSection.all => 'Filters',
-          _FilterSection.sort => 'Sort by',
-          _FilterSection.diet => 'Diet preference',
-          _FilterSection.brand => 'Brand',
-          _FilterSection.price => 'Price',
-        },
-        child: _FilterSheet(
-          categoryId: categoryId,
-          section: section,
-          controller: controller,
-        ),
-      );
+  ) => AppBottomSheet.show<void>(
+    context,
+    title: switch (section) {
+      _FilterSection.all => 'Filters',
+      _FilterSection.sort => 'Sort by',
+      _FilterSection.diet => 'Diet preference',
+      _FilterSection.brand => 'Brand',
+      _FilterSection.price => 'Price',
+    },
+    child: _FilterSheet(
+      categoryId: categoryId,
+      section: section,
+      controller: controller,
+    ),
+  );
 }
 
 enum _FilterSection { all, sort, diet, brand, price }
@@ -391,8 +438,9 @@ class _FilterSheet extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
               child: Text(
                 'The items here do not carry a brand.',
-                style: context.text.bodyMedium!
-                    .copyWith(color: context.semantic.textSecondary),
+                style: context.text.bodyMedium!.copyWith(
+                  color: context.semantic.textSecondary,
+                ),
               ),
             )
           else ...[
@@ -443,12 +491,9 @@ class _GroupLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(
-          top: AppSpacing.md,
-          bottom: AppSpacing.xs,
-        ),
-        child: Text(text, style: context.text.titleSmall),
-      );
+    padding: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.xs),
+    child: Text(text, style: context.text.titleSmall),
+  );
 }
 
 class _OptionRow extends StatelessWidget {
@@ -516,19 +561,26 @@ class _SubCategoryRail extends ConsumerWidget {
         itemCount: items.length,
         itemBuilder: (context, index) {
           final sub = items[index];
-          final selected = sub.id == selectedId || (selectedId == 'all' && index == 0);
+          final selected =
+              sub.id == selectedId || (selectedId == 'all' && index == 0);
 
           return GestureDetector(
-            onTap: () =>
-                ref.read(subCategoryProvider(categoryId).notifier).select(sub.id),
+            onTap: () => ref
+                .read(subCategoryProvider(categoryId).notifier)
+                .select(sub.id),
             behavior: HitTestBehavior.opaque,
             child: Stack(
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: selected ? context.colors.surface : Colors.transparent,
+                    color: selected
+                        ? context.colors.surface
+                        : Colors.transparent,
                   ),
                   child: Column(
                     children: [
@@ -539,13 +591,17 @@ class _SubCategoryRail extends ConsumerWidget {
                           shape: BoxShape.circle,
                           color: context.colors.surface,
                           border: Border.all(
-                            color: selected ? context.semantic.success : context.semantic.surfaceAlt,
+                            color: selected
+                                ? context.semantic.success
+                                : context.semantic.surfaceAlt,
                             width: selected ? 1.5 : 1,
                           ),
                           boxShadow: selected
                               ? [
                                   BoxShadow(
-                                    color: context.semantic.success.withValues(alpha: 0.15),
+                                    color: context.semantic.success.withValues(
+                                      alpha: 0.15,
+                                    ),
                                     blurRadius: 6,
                                     offset: const Offset(0, 2),
                                   ),
@@ -569,7 +625,14 @@ class _SubCategoryRail extends ConsumerWidget {
                           maxLines: 2,
                           textAlign: TextAlign.center,
                           overflow: TextOverflow.ellipsis,
-                          style: context.text.labelSmall!.copyWith(fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: selected ? context.colors.onSurface : context.semantic.textSecondary),
+                          style: context.text.labelSmall!.copyWith(
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: selected
+                                ? context.colors.onSurface
+                                : context.semantic.textSecondary,
+                          ),
                         ),
                       ),
                     ],
@@ -622,10 +685,13 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final quantity = ref.watch(cartProvider.select((s) => s.cart.quantityOf(product.id)));
+    final quantity = ref.watch(
+      cartProvider.select((s) => s.cart.quantityOf(product.id)),
+    );
     final isWishlisted = ref.watch(isWishlistedProvider(product.id));
 
-    final hasDiscount = product.strikePrice != null && product.strikePrice! > product.price;
+    final hasDiscount =
+        product.strikePrice != null && product.strikePrice! > product.price;
     final optionsText = product.hasVariants
         ? '${product.variants.length} options'
         : (product.unitLabel.contains('options') ? product.unitLabel : null);
@@ -676,7 +742,8 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
                   top: 4,
                   right: 4,
                   child: GestureDetector(
-                    onTap: () => CartActions.toggleWishlist(context, ref, product),
+                    onTap: () =>
+                        CartActions.toggleWishlist(context, ref, product),
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
@@ -690,9 +757,13 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
                         ],
                       ),
                       child: Icon(
-                        isWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        isWishlisted
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
                         size: 15,
-                        color: isWishlisted ? context.semantic.danger : context.semantic.textSecondary,
+                        color: isWishlisted
+                            ? context.semantic.danger
+                            : context.semantic.textSecondary,
                       ),
                     ),
                   ),
@@ -719,7 +790,9 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
                             width: 4,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: context.colors.surface.withValues(alpha: 0.6),
+                              color: context.colors.surface.withValues(
+                                alpha: 0.6,
+                              ),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -728,7 +801,9 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
                             width: 4,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: context.colors.surface.withValues(alpha: 0.6),
+                              color: context.colors.surface.withValues(
+                                alpha: 0.6,
+                              ),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -746,7 +821,10 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
                     height: 13,
                     decoration: BoxDecoration(
                       color: context.colors.surface,
-                      border: Border.all(color: context.semantic.success, width: 1.2),
+                      border: Border.all(
+                        color: context.semantic.success,
+                        width: 1.2,
+                      ),
                       borderRadius: BorderRadius.circular(2),
                     ),
                     child: Center(
@@ -765,7 +843,12 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
                 Positioned(
                   right: 2,
                   bottom: -10,
-                  child: _buildAddButton(context, quantity, product, optionsText),
+                  child: _buildAddButton(
+                    context,
+                    quantity,
+                    product,
+                    optionsText,
+                  ),
                 ),
               ],
             ),
@@ -774,7 +857,10 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
             // Unit / Weight
             Text(
               product.unitLabel,
-              style: context.text.bodySmall!.copyWith(fontWeight: FontWeight.w500, color: context.semantic.textSecondary),
+              style: context.text.bodySmall!.copyWith(
+                fontWeight: FontWeight.w500,
+                color: context.semantic.textSecondary,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -788,13 +874,20 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
               children: [
                 Text(
                   '₹${product.price.toInt()}',
-                  style: context.text.titleLarge!.copyWith(fontWeight: FontWeight.w800, color: context.colors.onSurface),
+                  style: context.text.titleLarge!.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: context.colors.onSurface,
+                  ),
                 ),
                 if (hasDiscount) ...[
                   const SizedBox(width: 4),
                   Text(
                     '₹${product.strikePrice!.toInt()}',
-                    style: context.text.bodySmall!.copyWith(fontWeight: FontWeight.w500, color: context.semantic.textSecondary, decoration: TextDecoration.lineThrough),
+                    style: context.text.bodySmall!.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: context.semantic.textSecondary,
+                      decoration: TextDecoration.lineThrough,
+                    ),
                   ),
                 ],
               ],
@@ -806,7 +899,10 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
                 padding: const EdgeInsets.only(top: 1),
                 child: Text(
                   '${product.discountPercent}% OFF on MRP',
-                  style: context.text.labelSmall!.copyWith(fontWeight: FontWeight.w700, color: context.colors.tertiary),
+                  style: context.text.labelSmall!.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: context.colors.tertiary,
+                  ),
                 ),
               ),
 
@@ -817,7 +913,10 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
               product.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: context.text.bodySmall!.copyWith(fontWeight: FontWeight.w600, color: context.colors.onSurface),
+              style: context.text.bodySmall!.copyWith(
+                fontWeight: FontWeight.w600,
+                color: context.colors.onSurface,
+              ),
             ),
 
             const SizedBox(height: 4),
@@ -831,8 +930,8 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
                       product.rating >= i
                           ? Icons.star_rounded
                           : product.rating >= i - 0.5
-                              ? Icons.star_half_rounded
-                              : Icons.star_outline_rounded,
+                          ? Icons.star_half_rounded
+                          : Icons.star_outline_rounded,
                       size: 13,
                       color: context.semantic.warning,
                     ),
@@ -841,7 +940,10 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
                   const SizedBox(width: 2),
                   Text(
                     _formatRatingCount(product.ratingCount),
-                    style: context.text.labelSmall!.copyWith(fontWeight: FontWeight.w500, color: context.semantic.textSecondary),
+                    style: context.text.labelSmall!.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: context.semantic.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -850,16 +952,23 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
 
             // Delivery Time Row — hidden when the seller has no promise set.
             if (product.deliveryMinutes != null)
-            Row(
-              children: [
-                Icon(Icons.schedule_rounded, size: 12, color: context.semantic.textSecondary),
-                const SizedBox(width: 3),
-                Text(
-                  '${product.deliveryMinutes} mins',
-                  style: context.text.labelSmall!.copyWith(fontWeight: FontWeight.w600, color: context.semantic.textSecondary),
-                ),
-              ],
-            ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 12,
+                    color: context.semantic.textSecondary,
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    '${product.deliveryMinutes} mins',
+                    style: context.text.labelSmall!.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: context.semantic.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -915,12 +1024,18 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
               children: [
                 Text(
                   'ADD',
-                  style: context.text.titleSmall!.copyWith(fontWeight: FontWeight.w800, color: context.semantic.success),
+                  style: context.text.titleSmall!.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: context.semantic.success,
+                  ),
                 ),
                 if (optionsText != null)
                   Text(
                     optionsText,
-                    style: context.text.labelSmall!.copyWith(fontWeight: FontWeight.w500, color: context.semantic.success),
+                    style: context.text.labelSmall!.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: context.semantic.success,
+                    ),
                   ),
               ],
             ),
@@ -952,7 +1067,10 @@ class _BrowseProductCardState extends ConsumerState<_BrowseProductCard> {
           ),
           Text(
             '$quantity',
-            style: context.text.titleSmall!.copyWith(fontWeight: FontWeight.w800, color: context.colors.surface),
+            style: context.text.titleSmall!.copyWith(
+              fontWeight: FontWeight.w800,
+              color: context.colors.surface,
+            ),
           ),
           GestureDetector(
             onTap: () => CartActions.increment(ref, product),
@@ -977,4 +1095,3 @@ class _LoadingLayout extends StatelessWidget {
     );
   }
 }
-

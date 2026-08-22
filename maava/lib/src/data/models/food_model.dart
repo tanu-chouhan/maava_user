@@ -18,6 +18,11 @@ class FoodModel {
   final bool isSpicy;
   final bool isPopular;
 
+  /// The menu section this item belongs to, as the seller named it. The API
+  /// sends it on every item; it was being dropped, so screens that wanted to
+  /// group by category had to guess from the item's name instead.
+  final String categoryName;
+
   /// Size/portion choices. Empty when the item has a single price.
   final List<FoodVariant> variants;
 
@@ -37,6 +42,7 @@ class FoodModel {
     this.isVeg = false,
     this.isSpicy = false,
     this.isPopular = false,
+    this.categoryName = '',
     this.variants = const [],
   });
 
@@ -111,6 +117,7 @@ class FoodModel {
       deliveryTime: (json['preparationTime'] ?? json['prepTime'] ?? json['deliveryTime'] ?? '').toString(),
       isVeg: (json['foodType']?.toString().toLowerCase() ?? '') == 'veg',
       isPopular: json['isRecommended'] as bool? ?? false,
+      categoryName: (json['categoryName'] ?? json['category'] ?? '').toString(),
       variants: FoodVariant.listFrom(json),
     );
   }
@@ -137,6 +144,7 @@ class FoodModel {
       isVeg: json['isVeg'] as bool? ?? false,
       isSpicy: json['isSpicy'] as bool? ?? false,
       isPopular: json['isPopular'] as bool? ?? false,
+      categoryName: (json['categoryName'] ?? json['category'] ?? '').toString(),
       variants: FoodVariant.listFrom(json),
     );
   }
@@ -158,6 +166,7 @@ class FoodModel {
       'isVeg': isVeg,
       'isSpicy': isSpicy,
       'isPopular': isPopular,
+      'categoryName': categoryName,
       'variants': variants.map((v) => v.toJson()).toList(),
     };
   }

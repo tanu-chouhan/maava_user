@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../branding/app_colors.dart';
 import 'splash_screen.dart' show PerfectAmoebaClipper, VideoStyleDotLoader;
 
-/// The HiberMart opener, shown each time the user switches into Mart.
+/// The MaavaMart opener, shown each time the user switches into Mart.
 ///
 /// Deliberately the *same* animation as the app's launch splash — same amoeba
 /// clipper, same interval curves, same dot loader — so entering Mart reads as

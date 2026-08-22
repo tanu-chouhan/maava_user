@@ -14,6 +14,7 @@ class CartPricing {
     this.platformFee = 0,
     this.quickDeliveryFee = 0,
     this.discount = 0,
+    this.deliveryTip = 0,
     this.total = 0,
     this.currency = 'INR',
     this.couponCode,
@@ -31,6 +32,9 @@ class CartPricing {
   final double platformFee;
   final double quickDeliveryFee;
   final double discount;
+
+  /// Tip the server charged, echoed back so the bill can show it as its own line.
+  final double deliveryTip;
   final double total;
   final String currency;
   final String? couponCode;
@@ -74,6 +78,7 @@ class Cart {
     this.pricing = CartPricing.empty,
     this.priceChanges = const [],
     this.deliveryMode = 'basic',
+    this.deliveryTip = 0,
   });
 
   final List<CartItem> items;
@@ -83,6 +88,10 @@ class Cart {
   final CartPricing pricing;
   final List<PriceChange> priceChanges;
   final String deliveryMode;
+
+  /// Voluntary tip for the delivery partner, chosen in the cart. Sent with the
+  /// pricing call so the server's total is the amount actually charged.
+  final double deliveryTip;
 
   bool get isEmpty => items.isEmpty;
   bool get isNotEmpty => items.isNotEmpty;
@@ -134,6 +143,7 @@ class Cart {
     CartPricing? pricing,
     List<PriceChange>? priceChanges,
     String? deliveryMode,
+    double? deliveryTip,
   }) =>
       Cart(
         items: items ?? this.items,
@@ -143,5 +153,6 @@ class Cart {
         pricing: pricing ?? this.pricing,
         priceChanges: priceChanges ?? this.priceChanges,
         deliveryMode: deliveryMode ?? this.deliveryMode,
+        deliveryTip: deliveryTip ?? this.deliveryTip,
       );
 }

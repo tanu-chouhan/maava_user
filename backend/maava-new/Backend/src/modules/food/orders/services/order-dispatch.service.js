@@ -312,7 +312,7 @@ export function partnerServesVertical(serviceType, vertical) {
  *  partner knows which brand the pickup is for before opening anything. */
 export function orderSourceTitle(order) {
   return order?.vertical === 'quick'
-    ? 'New order from HiberMart'
+    ? 'New order from MaavaMart'
     : 'New order from Maava Food';
 }
 

@@ -27,9 +27,11 @@ class Store99ViewModel extends Notifier<Store99State> {
     try {
       final cuisinesResp = await _service.getCuisines();
       final brandsResp = await _service.getBrands();
-      final trendingResp = await _service.getTrendingDishes();
+      final trendingResp = await _service.getTrendingDishes(
+        cuisineId: _selectedSlug,
+      );
       final exploreResp = await _service.fetchProductsPage(
-        cuisineId: state.selectedCuisineId,
+        cuisineId: _selectedSlug,
         page: 1,
         limit: _pageSize,
       );
@@ -56,6 +58,19 @@ class Store99ViewModel extends Notifier<Store99State> {
     }
   }
 
+  /// The keyword the catalogue filter matches for the selected chip.
+  ///
+  /// The chip's id is a category ObjectId; the filter regex-matches names, so
+  /// sending the id found nothing and every category came back empty.
+  String get _selectedSlug {
+    final id = state.selectedCuisineId;
+    if (id.isEmpty || id == 'all') return 'all';
+    for (final c in state.cuisines) {
+      if (c.id == id) return c.slug.isNotEmpty ? c.slug : c.label;
+    }
+    return 'all';
+  }
+
   Future<void> selectCuisine(String cuisineId) async {
     if (state.selectedCuisineId == cuisineId) return;
 
@@ -67,16 +82,21 @@ class Store99ViewModel extends Notifier<Store99State> {
     );
 
     try {
+      final slug = _selectedSlug;
       final exploreResp = await _service.fetchProductsPage(
-        cuisineId: cuisineId,
+        cuisineId: slug,
         page: 1,
         limit: _pageSize,
       );
+      // Both rows move together: the trending strip showing another cuisine
+      // beside a selected chip is the contradiction this screen had.
+      final trendingResp = await _service.getTrendingDishes(cuisineId: slug);
 
       final explore = exploreResp.data ?? const [];
 
       state = state.copyWith(
         exploreDishes: explore,
+        trendingDishes: trendingResp.data ?? const [],
         page: 1,
         hasMore: explore.length >= _pageSize,
         isLoading: false,
@@ -97,7 +117,7 @@ class Store99ViewModel extends Notifier<Store99State> {
 
     try {
       final response = await _service.fetchProductsPage(
-        cuisineId: state.selectedCuisineId,
+        cuisineId: _selectedSlug,
         page: nextPage,
         limit: _pageSize,
       );

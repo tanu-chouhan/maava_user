@@ -12,14 +12,21 @@ import 'repository_providers.dart';
 /// Falls back to the service default while the call is in flight or if it
 /// fails — the cart nudge is cosmetic, the real fee always comes from pricing.
 final feeSettingsProvider =
-    FutureProvider<({double freeDeliveryThreshold, double baseDeliveryFee})>(
+    FutureProvider<({double freeDeliveryThreshold, double baseDeliveryFee, List<double> tipPresets})>(
   (ref) => ref.watch(catalogContentRepositoryProvider).feeSettings(),
 );
+
+/// Storefront name for the app header, from the admin panel's business
+/// settings. The header used to render a compiled-in string, so renaming the
+/// store meant shipping a release.
+final storeNameProvider =
+    FutureProvider<String>((ref) => ref.watch(catalogContentRepositoryProvider).storeName());
 
 final cartPricingServiceProvider = Provider<CartPricingService>((ref) {
   final settings = ref.watch(feeSettingsProvider).value;
   return CartPricingService(
-    freeDeliveryThreshold: settings?.freeDeliveryThreshold ?? 199,
+    // 0 = the shop runs no free-delivery offer, so nothing is promised.
+    freeDeliveryThreshold: settings?.freeDeliveryThreshold ?? 0,
   );
 });
 

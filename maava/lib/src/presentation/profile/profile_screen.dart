@@ -1165,14 +1165,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onTap: () => context.push(RouteNames.helpSupport),
           ),
           _buildMenuRow(
-            icon: Icons.settings_outlined,
-            title: 'Settings',
-            subtitle: 'Appearance, notifications & language',
-            textColor: textColor,
-            secondaryColor: secondaryColor,
-            onTap: () => context.push(RouteNames.settings),
-          ),
-          _buildMenuRow(
             icon: Icons.shield_outlined,
             title: 'Privacy Policy',
             subtitle: 'How MAAVA handles your data',

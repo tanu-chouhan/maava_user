@@ -19,11 +19,6 @@ class DeepLinkService {
   /// silently pointing testers at production.
   static const String webHost = AppConstants.hostUrl;
 
-  static const String playStoreUrl =
-      'https://play.google.com/store/apps/details?id=com.maava.user';
-  static const String appStoreUrl =
-      'https://apps.apple.com/app/suvio-food/id123456789';
-
   /// Deep link to a single dish.
   ///
   /// The path and query deliberately mirror the app's existing `/food-detail`

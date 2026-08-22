@@ -42,8 +42,8 @@ void main() {
   });
 
   test('outlets beyond the radius are not serviceable', () {
-    // Hibermart really is 669km away in the live data.
-    final outlets = [outlet('Hibermart', km: 669.24)];
+    // MaavaMart really is 669km away in the live data.
+    final outlets = [outlet('MaavaMart', km: 669.24)];
     expect(StoreResolver.serving(outlets, maxDistanceKm: 25), isNull);
     expect(StoreResolver.serving(outlets), isNotNull, reason: 'no cap = allowed');
   });

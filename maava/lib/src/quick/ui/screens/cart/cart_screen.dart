@@ -22,6 +22,8 @@ import '../home/home_provider.dart';
 import 'widgets/bill_details_card.dart';
 import 'widgets/cart_line_tile.dart';
 import '../../../../shared/celebration/coupon_celebration.dart';
+import '../../../../shared/widgets/free_delivery_progress.dart';
+import '../../../../shared/widgets/tip_your_driver_card.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key, this.showAppBar = true});
@@ -51,7 +53,6 @@ class CartScreen extends ConsumerWidget {
       );
     }
 
-    final freeDeliveryGap = pricingService.amountToFreeDelivery(cart);
     final crossSell = _crossSell(ref, cart.items.map((i) => i.product.id).toSet());
 
     return Scaffold(
@@ -87,10 +88,6 @@ class CartScreen extends ConsumerWidget {
             const _DeliveryAddressCard(),
             if (cart.priceChanges.isNotEmpty)
               _PriceChangeNotice(changes: cart.priceChanges),
-            if (freeDeliveryGap > 0)
-              _FreeDeliveryNudge(amount: freeDeliveryGap)
-            else if (cart.pricing.isFreeDelivery && cart.pricing.total > 0)
-              const _FreeDeliveryEarned(),
             _SellerHeader(
               name: cart.sellerName,
               etaMinutes: cart.pricing.deliveryPromiseMinutes,
@@ -149,6 +146,32 @@ class CartScreen extends ConsumerWidget {
                 ),
               ),
             ],
+
+            // Below the recommendations, as in the reference: the shopper sees
+            // what to add, then how much closer it takes them.
+            FreeDeliveryProgress(
+              spent: cart.pricing.subtotal > 0
+                  ? cart.pricing.subtotal
+                  : cart.provisionalSubtotal,
+              threshold: pricingService.freeDeliveryThreshold,
+              formatAmount: (amount) => amount.asCurrency,
+              onTap: () => context.push(RoutePaths.coupons),
+            ),
+
+            const SizedBox(height: AppSpacing.xl),
+            // Same card as the Food cart, one implementation shared by both —
+            // Mart had no tip at all before this.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+              child: TipYourDriverCard(
+                selected: cart.deliveryTip,
+                presets: ref.watch(feeSettingsProvider).value?.tipPresets ??
+                    kDefaultTipPresets,
+                onSelect: (amount) =>
+                    ref.read(cartProvider.notifier).setDeliveryTip(amount),
+              ),
+            ),
+
             const SizedBox(height: AppSpacing.xl),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
@@ -346,82 +369,6 @@ class _SellerHeader extends StatelessWidget {
                 ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FreeDeliveryNudge extends StatelessWidget {
-  const _FreeDeliveryNudge({required this.amount});
-
-  final double amount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        0,
-      ),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: context.semantic.warningSoft,
-        borderRadius: AppRadii.rMd,
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.delivery_dining_rounded,
-            size: 18,
-            color: context.semantic.warning,
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              'Add ${amount.asCurrency} more for free delivery',
-              style: context.text.labelMedium!
-                  .copyWith(color: context.semantic.warning),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FreeDeliveryEarned extends StatelessWidget {
-  const _FreeDeliveryEarned();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        0,
-      ),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: context.semantic.successSoft,
-        borderRadius: AppRadii.rMd,
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.check_circle_rounded,
-            size: 18,
-            color: context.semantic.success,
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Text(
-            'Free delivery unlocked',
-            style: context.text.labelMedium!
-                .copyWith(color: context.semantic.success),
-          ),
         ],
       ),
     );

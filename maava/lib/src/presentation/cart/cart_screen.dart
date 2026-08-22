@@ -20,11 +20,15 @@ import '../../di/catalog_providers.dart';
 import 'viewmodels/cart_viewmodel.dart';
 import '../checkout/viewmodels/checkout_viewmodel.dart';
 import '../wallet/viewmodels/wallet_viewmodel.dart';
+import '../restaurant/widgets/auto_scrolling_offers.dart';
 import '../restaurant/widgets/food_detail_sheet.dart';
 import 'widgets/cart_recommendations_section.dart';
 import '../../shared/celebration/coupon_celebration.dart';
 import 'widgets/coupon_sheet.dart';
 import 'widgets/empty_cart_view.dart';
+import '../../di/fee_settings_providers.dart';
+import '../../shared/widgets/tip_your_driver_card.dart';
+import '../../shared/widgets/free_delivery_progress.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -371,27 +375,31 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             if (cartRestaurant != null && cartRestaurant.offerBadges.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.local_offer_rounded,
-                      size: 15,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        cartRestaurant.offerBadges.first,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
+                child: AutoScrollingOffers(
+                  offers: cartRestaurant.offerBadges,
+                  height: 20,
+                  itemBuilder: (context, offer) => Row(
+                    children: [
+                      Icon(
+                        Icons.local_offer_rounded,
+                        size: 15,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          offer,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
@@ -433,7 +441,25 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
                       const SizedBox(height: 12),
 
+                      // Free-delivery progress, below the recommendations as in
+                      // the reference. Threshold from the admin panel, spend
+                      // from the live cart, so it moves on every quantity
+                      // change without this screen computing anything.
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final threshold = ref
+                                  .watch(foodFreeDeliveryThresholdProvider)
+                                  .value ??
+                              0;
+                          return FreeDeliveryProgress(
+                            spent: itemTotal,
+                            threshold: threshold,
+                            formatAmount: (a) => '₹${a.toStringAsFixed(0)}',
+                          );
+                        },
+                      ),
 
+                      const SizedBox(height: 12),
 
                       // Card 3: Payment Offers & More Card
                       _buildPaymentOffersCard(
@@ -447,11 +473,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       const SizedBox(height: 12),
 
                       // Card 3b: Tip your delivery partner
-                      _buildTipCard(
-                        checkoutState.deliveryTip,
-                        textColor,
-                        secondaryColor,
-                        isDark,
+                      TipYourDriverCard(
+                        selected: checkoutState.deliveryTip,
+                        presets:
+                            ref.watch(foodTipPresetsProvider).value ??
+                                kDefaultTipPresets,
+                        onSelect: (amount) => unawaited(
+                          ref
+                              .read(checkoutViewModelProvider.notifier)
+                              .setDeliveryTip(amount),
+                        ),
                       ),
 
                       const SizedBox(height: 12),
@@ -1352,104 +1383,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ],
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  /// Tip presets. The chosen amount is sent to /calculate; every rupee figure
-  /// on screen still comes back from the server, nothing is summed here.
-  /// Tapping the selected chip again clears the tip.
-  Widget _buildTipCard(
-    double selected,
-    Color textColor,
-    Color secondaryColor,
-    bool isDark,
-  ) {
-    const presets = [10.0, 20.0, 30.0, 50.0];
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Tip your delivery partner',
-            style: TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w700,
-              color: textColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '100% of it goes to them.',
-            style: TextStyle(fontSize: 12, color: secondaryColor),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              for (final amount in presets) ...[
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      Haptics.light();
-                      unawaited(
-                        ref
-                            .read(checkoutViewModelProvider.notifier)
-                            .setDeliveryTip(amount),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: selected == amount
-                            ? AppColors.primary.withValues(alpha: 0.12)
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: selected == amount
-                              ? AppColors.primary
-                              : (isDark
-                                    ? AppColors.borderDark
-                                    : const Color(0xFFE2E8F0)),
-                          width: selected == amount ? 1.5 : 1,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '₹${amount.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: selected == amount
-                              ? FontWeight.w800
-                              : FontWeight.w600,
-                          color: selected == amount
-                              ? AppColors.primary
-                              : textColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                if (amount != presets.last) const SizedBox(width: 8),
-              ],
-            ],
-          ),
         ],
       ),
     );

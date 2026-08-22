@@ -1,28 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../presentation/branding/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../navigation/route_paths.dart';
 import '../../common/widgets/misc/sound_refresh_indicator.dart';
+import '../../common/widgets/misc/status_bar_style.dart';
 import '../../common/widgets/states/error_state_widget.dart';
 import '../../common/widgets/states/offline_banner.dart';
 import '../product/product_listing/product_listing_args.dart';
 import 'home_provider.dart';
 import '../../../domain/model/product.dart';
+import '../../../domain/model/category.dart';
 import 'home_state.dart';
+import '../../../domain/model/banner.dart';
+import 'widgets/banner_carousel.dart';
 import 'widgets/delivery_header.dart';
 import 'widgets/all_category_sections_feed.dart';
 import 'widgets/bestsellers_row.dart';
-import 'widgets/featured_this_week_row.dart';
 import 'widgets/housefull_sale_banner.dart';
 import 'widgets/lowest_prices_ever_row.dart';
 import 'widgets/shop_by_category_row.dart';
-import 'widgets/value_props_strip.dart';
 import 'widgets/active_order_card.dart';
+import 'widgets/maavamart_maintenance_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -62,15 +63,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final state = ref.watch(homeProvider);
     final topPadding = MediaQuery.of(context).padding.top;
 
-    final isDarkIcon = HSLColor.fromColor(AppColors.primary).lightness > 0.65;
-
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      // Match status bar color seamlessly with active theme header
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDarkIcon ? Brightness.dark : Brightness.light,
-        statusBarBrightness: isDarkIcon ? Brightness.dark : Brightness.light,
-      ),
+    // The colour actually behind the status bar is the header gradient's top
+    // stop, not the brand: reading the brand meant a deep plate (the brand's
+    // own dark ramp end, or any dark category theme) still got dark icons and
+    // the clock disappeared into it.
+    return StatusBarStyle(
+      background: martHeaderGradient(state.activeCampaign).first,
       child: Scaffold(
         backgroundColor: context.colors.surface,
         body: Stack(
@@ -81,9 +79,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Column(
                 children: [
                   const OfflineBanner(),
-                  Expanded(
-                    child: _buildBody(context, state, topPadding),
-                  ),
+                  Expanded(child: _buildBody(context, state, topPadding)),
                 ],
               ),
             ),
@@ -102,6 +98,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildBody(BuildContext context, HomeState state, double topPadding) {
+    if (!state.hasStoreInZone) {
+      return const MaavaMartMaintenanceScreen();
+    }
+
     if (state.failure != null &&
         state.sections.isEmpty &&
         state.categories.isEmpty) {
@@ -111,107 +111,197 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    return SoundRefreshIndicator(
-      onRefresh: () => ref.read(homeProvider.notifier).load(refresh: true),
-      child: CustomScrollView(
-        controller: _scrollController,
-        // Platform default over-scroll, not iOS bounce.
-        //
-        // BouncingScrollPhysics drags the whole list down on a pull and springs
-        // it back, which read as the page jumping and re-scrolling on every
-        // refresh. `AlwaysScrollable` keeps pull-to-refresh working when the
-        // content is shorter than the viewport, while over-scroll falls back to
-        // the platform's own (a glow on Android) so nothing moves. Food's home
-        // already used exactly this.
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          // 1. Top Header Section matching spec: Warm Orange Gradient, Delivery ETA, Address, Search Bar & Category Navigation Strip
-          SliverToBoxAdapter(
-            child: DeliveryHeader(
-              categories: state.categories,
-              onCategoryTap: (catId) =>
-                  context.push(RoutePaths.subCategoryOf(catId)),
-              onAllTap: () => context.go(RoutePaths.categories),
+    // A fixed strip holding the status bar, painted in the header's own top
+    // colour so the page still reads as one plate running under the clock.
+    //
+    // The scroll view starts BELOW it, which is what stops the pinned search
+    // field from sliding under the status bar: a pinned sliver sticks to the
+    // viewport's leading edge, and that edge used to be the top of the screen.
+    return Column(
+      children: [
+        Container(
+          height: topPadding,
+          color: martHeaderGradient(state.activeCampaign).first,
+        ),
+        Expanded(
+          child: SoundRefreshIndicator(
+            onRefresh: () =>
+                ref.read(homeProvider.notifier).load(refresh: true),
+            child: CustomScrollView(
+              controller: _scrollController,
+              // Platform default over-scroll, not iOS bounce.
+              //
+              // BouncingScrollPhysics drags the whole list down on a pull and springs
+              // it back, which read as the page jumping and re-scrolling on every
+              // refresh. `AlwaysScrollable` keeps pull-to-refresh working when the
+              // content is shorter than the viewport, while over-scroll falls back to
+              // the platform's own (a glow on Android) so nothing moves. Food's home
+              // already used exactly this.
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // 1. Header, in three slivers so the search field can pin while the
+                //    rest of the page scrolls past underneath it.
+                SliverToBoxAdapter(
+                  child: DeliveryHeader(
+                    section: MartHeaderSection.top,
+                    campaign: state.activeCampaign,
+                    deliveryMinutes: _deliveryMinutes(state),
+                  ),
+                ),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _PinnedSearchBar(
+                    child: DeliveryHeader(
+                      section: MartHeaderSection.search,
+                      campaign: state.activeCampaign,
+                      categories: state.categories,
+                      selectedCategoryId: state.selectedCategoryId,
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: DeliveryHeader(
+                    section: MartHeaderSection.categories,
+                    categories: state.categories,
+                    campaign: state.activeCampaign,
+                    selectedCategoryId: state.selectedCategoryId,
+                    // Re-themes the page in place. The header and bottom nav stay put
+                    // in the reference too, so pushing a route would only add a
+                    // back-stack entry for something that never leaves this screen.
+                    onCategoryTap: (catId) =>
+                        ref.read(homeProvider.notifier).selectCategory(catId),
+                    onAllTap: () =>
+                        ref.read(homeProvider.notifier).selectCategory(''),
+                  ),
+                ),
+
+                // 2. Housefull Sale Banner matching reference design with active theme colors
+                SliverToBoxAdapter(
+                  child: HousefullSaleBanner(
+                    campaign: state.activeCampaign,
+                    dealProduct: _dealProducts(state).isNotEmpty
+                        ? _dealProducts(state).first
+                        : null,
+                    categories: state.categories,
+                    onCrazyDealsTap: () => context.push(
+                      RoutePaths.productListing,
+                      extra: const ProductListingArgs(title: 'Deal of the day'),
+                    ),
+                    onCategoryCardTap: (catId) =>
+                        context.push(RoutePaths.subCategoryOf(catId)),
+                  ),
+                ),
+
+                // 3. LOWEST PRICES EVER RAIL (Sorted by lowest price first, matching reference card design)
+                SliverToBoxAdapter(
+                  child: LowestPricesEverRow(
+                    products: _visibleProducts(state),
+                    onProductTap: (p) =>
+                        context.push(RoutePaths.productDetailsOf(p.id)),
+                  ),
+                ),
+
+                // 4. BESTSELLERS (Category Collage Cards matching reference design 1:1)
+                SliverToBoxAdapter(
+                  child: BestsellersRow(
+                    categories: state.categories,
+                    sections: state.sections,
+                    campaigns: state.campaigns,
+                    onCategoryTap: (catId) =>
+                        context.push(RoutePaths.subCategoryOf(catId)),
+                    onSeeAll: () => context.go(RoutePaths.categories),
+                  ),
+                ),
+
+                // 5. FEATURED THIS WEEK — the admin's promotional banners.
+                //
+                // This used to be three hand-painted cards ('Newly Launched', 'Price
+                // Drop', 'Plum Cakes') with no data behind them at all: invented
+                // headlines advertising products that were not in the catalogue, and
+                // every tap opened the same generic listing. Meanwhile `topBanners`
+                // was fetched from the panel on every load and thrown away. Hidden
+                // rather than faked when the admin has uploaded nothing.
+                if (state.topBanners.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: BannerCarousel(
+                      banners: state.topBanners,
+                      isLoading: state.isLoadingBanners,
+                      onTap: (banner) => _openBanner(context, banner),
+                    ),
+                  ),
+
+                // 4. SHOP BY CATEGORY (Horizontal category cards with scroll arrow)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2, bottom: 2),
+                    child: ShopByCategoryRow(
+                      categories: state.categories,
+                      isLoading: state.isLoadingCategories,
+                      onSeeAll: () => context.go(RoutePaths.categories),
+                      onCategoryTap: (catId) =>
+                          context.push(RoutePaths.subCategoryOf(catId)),
+                    ),
+                  ),
+                ),
+
+                // 6. ALL CATEGORY SECTIONS (4-Column Grids per category matching reference screenshot 1:1)
+                SliverToBoxAdapter(
+                  child: AllCategorySectionsFeed(
+                    categories: _visibleTree(state),
+                    onCategoryTap: (catId) =>
+                        context.push(RoutePaths.subCategoryOf(catId)),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: AppSpacing.xl * 2),
+                ),
+              ],
             ),
           ),
-
-          // 2. Housefull Sale Banner matching reference design with active theme colors
-          SliverToBoxAdapter(
-            child: HousefullSaleBanner(
-              dealProduct: _dealProducts(state).isNotEmpty ? _dealProducts(state).first : null,
-              categories: state.categories,
-              onCrazyDealsTap: () => context.push(
-                RoutePaths.productListing,
-                extra: const ProductListingArgs(title: 'Deal of the day'),
-              ),
-              onCategoryCardTap: (catId) =>
-                  context.push(RoutePaths.subCategoryOf(catId)),
-            ),
-          ),
-
-          // 3. LOWEST PRICES EVER RAIL (Sorted by lowest price first, matching reference card design)
-          SliverToBoxAdapter(
-            child: LowestPricesEverRow(
-              products: state.sections.expand((s) => s.products).toList(),
-              onProductTap: (p) => context.push(RoutePaths.productDetailsOf(p.id)),
-            ),
-          ),
-
-          // 4. BESTSELLERS (Category Collage Cards matching reference design 1:1)
-          SliverToBoxAdapter(
-            child: BestsellersRow(
-              categories: state.categories,
-              onCategoryTap: (catId) =>
-                  context.push(RoutePaths.subCategoryOf(catId)),
-              onSeeAll: () => context.go(RoutePaths.categories),
-            ),
-          ),
-
-          // 5. FEATURED THIS WEEK (Newly Launched, Price Drop, Festive Plum Cakes cards matching spec 1:1)
-          SliverToBoxAdapter(
-            child: FeaturedThisWeekRow(
-              onCardTap: (index) => context.push(RoutePaths.productListing),
-            ),
-          ),
-
-          // 4. Trust / Service Promises Strip (Farm Fresh, Free Delivery, Secure Payment, Easy Returns)
-          const SliverToBoxAdapter(
-            child: TrustStrip(),
-          ),
-
-          // 4. SHOP BY CATEGORY (Horizontal category cards with scroll arrow)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 2, bottom: 2),
-              child: ShopByCategoryRow(
-                categories: state.categories,
-                isLoading: state.isLoadingCategories,
-                onSeeAll: () => context.go(RoutePaths.categories),
-                onCategoryTap: (catId) =>
-                    context.push(RoutePaths.subCategoryOf(catId)),
-              ),
-            ),
-          ),
-
-          // 6. ALL CATEGORY SECTIONS (4-Column Grids per category matching reference screenshot 1:1)
-          SliverToBoxAdapter(
-            child: AllCategorySectionsFeed(
-              categories: state.categories,
-              onCategoryTap: (catId) =>
-                  context.push(RoutePaths.subCategoryOf(catId)),
-            ),
-          ),
-
-          const SliverToBoxAdapter(
-            child: SizedBox(height: AppSpacing.xl * 2),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
+  }
+
+  /// Sections for the current selection: everything under 'All', otherwise only
+  /// the chosen category's.
+  ///
+  /// Selecting a category must not leave unrelated products on screen — that is
+  /// the whole point of the selection.
+  List<HomeSection> _visibleSections(HomeState state) {
+    if (state.selectedCategoryId.isEmpty) return state.sections;
+    return state.sections
+        .where((s) => s.categoryId == state.selectedCategoryId)
+        .toList();
+  }
+
+  List<Product> _visibleProducts(HomeState state) =>
+      _visibleSections(state).expand((s) => s.products).toList();
+
+  /// The category tree for the current selection: everything under 'All',
+  /// otherwise the chosen category and its own children.
+  List<Category> _visibleTree(HomeState state) {
+    final selected = state.selectedCategoryId;
+    if (selected.isEmpty) return state.allCategories;
+    return state.allCategories
+        .where((c) => c.id == selected || c.parentId == selected)
+        .toList();
   }
 
   /// The home section that backs "Deal of the day".
   static const _dealSectionId = 'flash';
+
+  /// The delivery estimate to show in the header: the quickest of the stores
+  /// serving this address, since that is the one an order would go to.
+  int? _deliveryMinutes(HomeState state) {
+    final published = state.sellers
+        .map((s) => s.deliveryMinutes)
+        .whereType<int>()
+        .where((m) => m > 0);
+    if (published.isEmpty) return null;
+    return published.reduce((a, b) => a < b ? a : b);
+  }
 
   List<Product> _dealProducts(HomeState state) {
     for (final section in state.sections) {
@@ -219,4 +309,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     return const [];
   }
+
+  /// Sends a banner tap wherever its CTA link points.
+  ///
+  /// [PromoBanner] already classifies the admin's free-text link, so the
+  /// destination is the admin's decision rather than the widget's. Anything not
+  /// pointing at a category opens the listing under the banner's own title,
+  /// because a banner that does nothing on tap reads as broken.
+  void _openBanner(BuildContext context, PromoBanner banner) {
+    final categoryId = banner.targetId;
+    if (banner.target == BannerTarget.category && categoryId.isNotEmpty) {
+      context.push(RoutePaths.subCategoryOf(categoryId));
+      return;
+    }
+    final title = banner.title.trim();
+    context.push(
+      RoutePaths.productListing,
+      extra: ProductListingArgs(title: title.isEmpty ? 'Offers' : title),
+    );
+  }
+}
+
+/// Pins the Mart search field below the scrolling header.
+///
+/// Fixed extent: the field is one row of a known height, so min and max are the
+/// same and it neither grows nor shrinks as the page moves — which is what
+/// keeps it from overlapping the content sliding beneath it.
+class _PinnedSearchBar extends SliverPersistentHeaderDelegate {
+  const _PinnedSearchBar({required this.child});
+
+  final Widget child;
+
+  /// Search field (48) plus the breathing room the header gave it.
+  static const _height = 60.0;
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
+      SizedBox.expand(child: child);
+
+  @override
+  bool shouldRebuild(_PinnedSearchBar old) => old.child != child;
 }

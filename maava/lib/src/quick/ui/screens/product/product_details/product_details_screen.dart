@@ -11,6 +11,7 @@ import '../../../../core/network/share_links.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../di/app_providers.dart';
+import '../../../../di/service_providers.dart';
 
 import '../../../../domain/model/product.dart';
 import '../../../../domain/model/product_variant.dart';
@@ -19,7 +20,6 @@ import '../../../common/cart_actions.dart';
 import '../../../common/widgets/feedback/app_toast.dart';
 import '../../../common/widgets/badges/delivery_time_badge.dart';
 import '../../../common/widgets/loaders/full_page_loader.dart';
-import '../../../common/widgets/misc/app_network_image.dart';
 import '../../../common/widgets/misc/quantity_stepper.dart';
 import '../../../common/widgets/misc/section_header.dart';
 import '../../../common/widgets/states/error_state_widget.dart';
@@ -28,6 +28,7 @@ import '../product_listing/product_listing_args.dart';
 import 'product_details_provider.dart';
 import 'product_details_state.dart';
 import 'widgets/product_image_carousel.dart';
+import '../../cart/widgets/cart_summary_bar.dart';
 import 'widgets/reviews_section.dart';
 import 'widgets/write_review_sheet.dart';
 
@@ -124,18 +125,28 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      bottomNavigationBar: _StickyBottomBar(
-        state: state,
-        inCartQuantity: inCartQuantity,
-        onAdd: () => _addToCart(state),
-        onViewCart: () => context.go(RoutePaths.cart),
-        onSelectVariant: (v) => ref
-            .read(productDetailsProvider(_args).notifier)
-            .selectVariant(v),
+      // The same "N items · ₹X — View cart" bar every browsing screen carries,
+      // sitting above this screen's add-to-cart bar. It hides itself while the
+      // cart is empty, so it appears the moment something is added — the route
+      // to the cart used to disappear the instant you opened a product.
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CartSummaryBar(),
+          _StickyBottomBar(
+            state: state,
+            inCartQuantity: inCartQuantity,
+            onAdd: () => _addToCart(state),
+            onViewCart: () => context.go(RoutePaths.cart),
+            onSelectVariant: (v) => ref
+                .read(productDetailsProvider(_args).notifier)
+                .selectVariant(v),
+          ),
+        ],
       ),
       body: CustomScrollView(
         slivers: [
-          // 1. Top Yellow Header with MAAVA Logo & Action Buttons
+          // 1. Top header: storefront name, delivery estimate, action buttons.
           _buildTopHeader(context, product, state),
 
           // 2. Product Image Gallery Section
@@ -152,9 +163,6 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
 
           // 6. View Product Details Accordion
           SliverToBoxAdapter(child: _buildViewProductDetailsAccordion(context, product)),
-
-          // 7. Store / Seller Card ("Sold by Amul Official Store")
-          SliverToBoxAdapter(child: _buildSellerCard(context, product)),
 
           // 8. Reviews & Ratings Section
           SliverToBoxAdapter(
@@ -209,7 +217,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     );
   }
 
-  // 1. Top Yellow Header with MAAVA Logo & Action Buttons
+  // 1. Top header: storefront name, delivery estimate, action buttons.
   Widget _buildTopHeader(
     BuildContext context,
     Product product,
@@ -247,47 +255,48 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // Center: MAAVA Logo & Groceries in 10 Mins
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'app',
-                      style: context.text.displaySmall!.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: context.colors.onSurface,
-                        fontSize: 25,
-                        letterSpacing: -0.5,
-                        height: 1.0,
-                      ),
+          // Centre: the storefront, from the admin panel.
+          //
+          // This was a hardcoded 'appzeto' wordmark over 'Groceries in 10 Mins'
+          // — the wrong brand entirely, and a delivery promise no store had
+          // made. Both now come from the same places the home header reads.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Scaled down rather than clipped: at a fixed 25px the action
+                // buttons left too little room and the brand rendered as
+                // "Hiber…", which reads as a broken string rather than a name.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    ref.watch(storeNameProvider).value ?? '',
+                    maxLines: 1,
+                    style: context.text.displaySmall!.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: context.colors.onSurface,
+                      fontSize: 25,
+                      letterSpacing: -0.5,
+                      height: 1.0,
                     ),
-                    TextSpan(
-                      text: 'zeto',
-                      style: context.text.displaySmall!.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: context.colors.primary,
-                        fontSize: 25,
-                        letterSpacing: -0.5,
-                        height: 1.0,
-                      ),
+                  ),
+                ),
+                if (product.deliveryMinutes != null)
+                  Text(
+                    'Groceries in ${product.deliveryMinutes} Mins',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.labelSmall!.copyWith(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF6B7280),
+                      height: 1.1,
                     ),
-                  ],
-                ),
-              ),
-              Text(
-                'Groceries in 10 Mins',
-                style: context.text.labelSmall!.copyWith(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF6B7280),
-                  height: 1.1,
-                ),
-              ),
-            ],
+                  ),
+              ],
+            ),
           ),
           const Spacer(),
           // Right action cards: Search | Wishlist | Share
@@ -775,7 +784,6 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
               'Food type',
               product.isVeg ? 'Vegetarian' : 'Non-vegetarian',
             ),
-            _specRow('Sold by', product.sellerName),
           ],
         ),
       ),
@@ -810,136 +818,6 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     );
   }
 
-  // 7. Store / Seller Card ("Sold by Amul Official Store")
-  Widget _buildSellerCard(BuildContext context, Product product) {
-    final sellerName = product.sellerName.trim();
-    if (sellerName.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: product.sellerImageUrl.trim().isNotEmpty
-                ? AppNetworkImage(
-                    url: product.sellerImageUrl,
-                    width: 38,
-                    height: 38,
-                    fallbackIcon: Icons.storefront_outlined,
-                  )
-                : Container(
-                    width: 38,
-                    height: 38,
-                    color: context.colors.primary,
-                    alignment: Alignment.center,
-                    child: Text(
-                      sellerName.substring(0, 1).toUpperCase(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                        color: context.semantic.onBrandSurface,
-                      ),
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 10),
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sold by',
-                  style: context.text.bodySmall!.copyWith(
-                    fontSize: 10,
-                    color: const Color(0xFF6B7280),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        sellerName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.text.titleSmall!.copyWith(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12.5,
-                          color: context.colors.onSurface,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  product.sellerAcceptingOrders
-                      ? 'Accepting orders'
-                      : 'Not accepting orders right now',
-                  style: context.text.bodySmall!.copyWith(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: product.sellerAcceptingOrders
-                        ? context.semantic.accent
-                        : const Color(0xFFDC2626),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 4),
-          GestureDetector(
-            onTap: () => context.push(
-              RoutePaths.productListing,
-              extra: ProductListingArgs(
-                title: sellerName,
-                sellerId: product.sellerId,
-              ),
-            ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: context.colors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.semantic.accent, width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Explore all products',
-                    style: context.text.labelSmall!.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 9.5,
-                      color: context.colors.onSurface,
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 13,
-                    color: context.colors.onSurface,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// Sticky bottom bar: quantity, live line price, and add/view-cart.

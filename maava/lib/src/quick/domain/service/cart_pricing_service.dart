@@ -29,7 +29,7 @@ class BillLine {
 /// invents a fee or a tax, it only arranges what `POST /orders/calculate`
 /// returned and computes the local, pre-pricing optimistic values.
 class CartPricingService {
-  const CartPricingService({this.freeDeliveryThreshold = 199});
+  const CartPricingService({this.freeDeliveryThreshold = 0});
 
   /// Order value above which delivery is free. Sourced from the backend's
   /// public fee settings; the constructor default is only a cold-start guess.
@@ -171,6 +171,9 @@ class CartPricingService {
           amount: p.discount,
           isDiscount: true,
         ),
+      // Its own line, or the total would not reconcile against the parts.
+      if (p.deliveryTip > 0)
+        BillLine(label: 'Delivery Partner Tip', amount: p.deliveryTip),
       BillLine(
         label: 'To pay',
         amount: priced ? p.total : subtotal,

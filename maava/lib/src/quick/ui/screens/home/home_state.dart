@@ -1,4 +1,5 @@
 import '../../../core/errors/failure.dart';
+import '../../../domain/model/sale_campaign.dart';
 import '../../../domain/model/banner.dart';
 import '../../../domain/model/brand.dart';
 import '../../../domain/model/category.dart';
@@ -38,10 +39,14 @@ class HomeState {
     this.heroBanners = const [],
     this.topBanners = const [],
     this.categories = const [],
+    this.allCategories = const [],
     this.brands = const [],
     this.sellers = const [],
     this.sections = const [],
     this.coupons = const [],
+    this.saleCampaign,
+    this.campaigns = const [],
+    this.selectedCategoryId = '',
     this.isLoadingBanners = true,
     this.isLoadingCategories = true,
     this.isLoadingSections = true,
@@ -55,9 +60,36 @@ class HomeState {
   /// being shown anywhere.
   final List<PromoBanner> heroBanners;
 
+  /// The admin-configured sale promotion, or null when none is live.
+  final SaleCampaign? saleCampaign;
+
+  /// Every live campaign, keyed by the header category it themes.
+  final List<SaleCampaign> campaigns;
+
+  /// Header category currently selected; empty means 'All'.
+  final String selectedCategoryId;
+
+  /// The campaign backing the current selection, falling back to the default
+  /// (category-less) one so the page always has something to render.
+  SaleCampaign? get activeCampaign {
+    for (final c in campaigns) {
+      if (c.categoryId == selectedCategoryId && selectedCategoryId.isNotEmpty) {
+        return c;
+      }
+    }
+    for (final c in campaigns) {
+      if (c.categoryId == null) return c;
+    }
+    return campaigns.isEmpty ? saleCampaign : campaigns.first;
+  }
+
   /// The promotional strip below Nearby stores.
   final List<PromoBanner> topBanners;
   final List<Category> categories;
+
+  /// Every category, both levels, each carrying its `parentId`. `categories`
+  /// stays top-level-only because most surfaces want exactly that.
+  final List<Category> allCategories;
   final List<Brand> brands;
   final List<Seller> sellers;
   final List<HomeSection> sections;
@@ -76,6 +108,18 @@ class HomeState {
 
   bool get isEmpty =>
       !isLoadingSections && sections.isEmpty && categories.isEmpty;
+
+  /// Whether there is a MaavaMart store available in the customer's active zone.
+  ///
+  /// Evaluates to true while initial load is in progress. Once loading completes,
+  /// returns true if backend returns sellers or sections for the active zone,
+  /// and false if no MaavaMart store exists in the user's zone.
+  bool get hasStoreInZone {
+    if (isLoadingSections || isLoadingCategories) return true;
+    if (sellers.isNotEmpty) return true;
+    if (sections.isNotEmpty || categories.isNotEmpty) return true;
+    return false;
+  }
 
   /// Products of a derived section, or empty when it was dropped for having none.
   /// Sections that are not pinned to a bespoke widget above — rendered as
@@ -96,10 +140,14 @@ class HomeState {
     List<PromoBanner>? heroBanners,
     List<PromoBanner>? topBanners,
     List<Category>? categories,
+    List<Category>? allCategories,
     List<Brand>? brands,
     List<Seller>? sellers,
     List<HomeSection>? sections,
     List<Coupon>? coupons,
+    SaleCampaign? saleCampaign,
+    List<SaleCampaign>? campaigns,
+    String? selectedCategoryId,
     bool? isLoadingBanners,
     bool? isLoadingCategories,
     bool? isLoadingSections,
@@ -112,10 +160,14 @@ class HomeState {
         heroBanners: heroBanners ?? this.heroBanners,
         topBanners: topBanners ?? this.topBanners,
         categories: categories ?? this.categories,
+        allCategories: allCategories ?? this.allCategories,
         brands: brands ?? this.brands,
         sellers: sellers ?? this.sellers,
         sections: sections ?? this.sections,
         coupons: coupons ?? this.coupons,
+        saleCampaign: saleCampaign ?? this.saleCampaign,
+        campaigns: campaigns ?? this.campaigns,
+        selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
         isLoadingBanners: isLoadingBanners ?? this.isLoadingBanners,
         isLoadingCategories: isLoadingCategories ?? this.isLoadingCategories,
         isLoadingSections: isLoadingSections ?? this.isLoadingSections,

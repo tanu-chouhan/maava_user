@@ -108,6 +108,8 @@ class ApiCartRepository implements CartRepository {
         if (couponCode != null && couponCode.trim().isNotEmpty)
           'couponCode': couponCode.trim(),
         'deliveryMode': deliveryMode,
+        // Sent on every reprice so the quoted total is what the customer pays.
+        if (cart.deliveryTip > 0) 'deliveryTip': cart.deliveryTip,
         if (scheduledAt != null) 'scheduledAt': scheduledAt.toUtc().toIso8601String(),
       },
       requiresAuth: true,

@@ -1,11 +1,10 @@
-import '../../../../core/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/errors/error_mapper.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../domain/model/category.dart';
 import '../../../../navigation/route_paths.dart';
@@ -15,123 +14,110 @@ import '../../../common/widgets/inputs/search_bar_widget.dart';
 import '../../../common/widgets/loaders/list_skeleton.dart';
 import '../../../common/widgets/misc/sound_refresh_indicator.dart';
 import '../../../common/widgets/misc/staggered_entrance.dart';
+import '../../../common/widgets/misc/status_bar_style.dart';
 import '../../../common/widgets/states/empty_state_widget.dart';
 import '../../../common/widgets/states/error_state_widget.dart';
 import '../../cart/widgets/cart_summary_bar.dart';
-import '../../home/widgets/delivery_header.dart';
 import 'categories_provider.dart';
 
-/// Categories Screen matching reference Blinkit-style UI design:
-/// - Golden top header gradient with delivery header & search bar.
-/// - Grouped section headers ("Grocery & Kitchen", "Snacks & Drinks", etc.).
-/// - 4-column grid of soft pastel mint category cards.
+/// The Categories tab: every top-level category as a section, with its own
+/// subcategories in a 4-column grid.
+///
+/// It used to embed the HOME screen's `DeliveryHeader` — delivery ETA, address,
+/// category strip and all — and then place a second search bar underneath it.
+/// That produced two search fields stacked on one screen, and an empty category
+/// strip, because the embedded header was constructed with no categories to
+/// show. This screen has a header of its own now: a title and one search bar.
+///
+/// Sections used to be four hardcoded buckets ('Grocery & Kitchen', 'Snacks &
+/// Drinks', …) filled by keyword-matching category names, so a category could
+/// land under a heading it had nothing to do with, and anything unmatched fell
+/// into 'Household Essentials'. Categories carry a real `parentId` now.
 class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key, this.showAppBar = false});
 
   final bool showAppBar;
 
-  Map<String, List<Category>> _groupCategories(List<Category> all) {
-    final Map<String, List<Category>> groups = {
-      'Grocery & Kitchen': [],
-      'Snacks & Drinks': [],
-      'Beauty & Personal Care': [],
-      'Household Essentials': [],
-    };
-
-    for (final cat in all) {
-      final name = cat.name.toLowerCase();
-      if (name.contains('veg') ||
-          name.contains('fruit') ||
-          name.contains('atta') ||
-          name.contains('rice') ||
-          name.contains('dal') ||
-          name.contains('oil') ||
-          name.contains('ghee') ||
-          name.contains('masala') ||
-          name.contains('dairy') ||
-          name.contains('bread') ||
-          name.contains('egg') ||
-          name.contains('bakery') ||
-          name.contains('biscuit') ||
-          name.contains('dry fruit') ||
-          name.contains('cereal') ||
-          name.contains('chicken') ||
-          name.contains('meat') ||
-          name.contains('fish') ||
-          name.contains('kitchen')) {
-        groups['Grocery & Kitchen']!.add(cat);
-      } else if (name.contains('chip') ||
-          name.contains('namkeen') ||
-          name.contains('sweet') ||
-          name.contains('choc') ||
-          name.contains('drink') ||
-          name.contains('juice') ||
-          name.contains('tea') ||
-          name.contains('coffee') ||
-          name.contains('milk') ||
-          name.contains('instant') ||
-          name.contains('sauce') ||
-          name.contains('spread') ||
-          name.contains('paan') ||
-          name.contains('ice cream') ||
-          name.contains('snack')) {
-        groups['Snacks & Drinks']!.add(cat);
-      } else if (name.contains('beauty') ||
-          name.contains('bath') ||
-          name.contains('body') ||
-          name.contains('hair') ||
-          name.contains('skin') ||
-          name.contains('baby') ||
-          name.contains('cosmetic')) {
-        groups['Beauty & Personal Care']!.add(cat);
-      } else {
-        groups['Household Essentials']!.add(cat);
-      }
+  /// Parents that actually have children, each paired with them.
+  ///
+  /// A parent with nothing under it is skipped: a heading over an empty grid
+  /// reads as a section that failed to load. When the catalogue has no tree at
+  /// all yet, everything top-level is shown in one section so the tab is still
+  /// usable.
+  List<(String, List<Category>)> _sections(List<Category> tree) {
+    final childrenOf = <String, List<Category>>{};
+    for (final category in tree) {
+      if (category.isCore) continue;
+      childrenOf.putIfAbsent(category.parentId, () => []).add(category);
     }
 
-    groups.removeWhere((key, value) => value.isEmpty);
+    final core = tree.where((c) => c.isCore).toList();
+    final sections = [
+      for (final parent in core)
+        if (childrenOf[parent.id] case final children?)
+          if (children.isNotEmpty) (parent.name, children),
+    ];
 
-    if (groups.isEmpty) {
-      groups['All Categories'] = all;
-    }
-    return groups;
+    if (sections.isNotEmpty) return sections;
+    return core.isEmpty ? const [] : [('All categories', core)];
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final categoriesAsync = ref.watch(categoriesProvider);
+    final treeAsync = ref.watch(categoryTreeProvider);
+    final headerColor = context.colors.surface;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-      ),
+    return StatusBarStyle(
+      // The header is a plain surface, not the home screen's brand gradient.
+      // This screen used to hardcode dark icons while showing whatever header
+      // it had inherited, so the clock sat unreadable on a deep purple plate.
+      background: headerColor,
       child: Scaffold(
         backgroundColor: context.colors.surface,
         appBar: showAppBar
-            ? AppBar(
-                title: const Text('All Categories'),
-                elevation: 0,
-              )
+            ? AppBar(title: const Text('All Categories'), elevation: 0)
             : null,
         bottomNavigationBar: const CartSummaryBar(),
         body: Column(
           children: [
-            // Clean Unified Top Header with DeliveryHeader + SearchBar
             Container(
               decoration: BoxDecoration(
-                color: context.colors.surface,
-                border: Border(bottom: BorderSide(color: const Color(0xFFF1F5F9), width: 1)),
+                color: headerColor,
+                border: const Border(
+                  bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+                ),
               ),
               child: SafeArea(
                 bottom: false,
                 top: !showAppBar,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const DeliveryHeader(),
+                    if (!showAppBar)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          AppSpacing.gutter,
+                          10,
+                          AppSpacing.gutter,
+                          2,
+                        ),
+                        child: Text(
+                          'All Categories',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 22,
+                            letterSpacing: -0.3,
+                            color: context.colors.onSurface,
+                          ),
+                        ),
+                      ),
                     Padding(
-                      padding: EdgeInsets.fromLTRB(AppSpacing.gutter, 2, AppSpacing.gutter, 8),
+                      padding: EdgeInsets.fromLTRB(
+                        AppSpacing.gutter,
+                        6,
+                        AppSpacing.gutter,
+                        10,
+                      ),
                       child: SearchBarWidget(
                         readOnly: true,
                         hintRotation: const [
@@ -151,16 +137,16 @@ class CategoriesScreen extends ConsumerWidget {
               ),
             ),
 
-            // Main Category Grid Sections Content
             Expanded(
-              child: categoriesAsync.when(
+              child: treeAsync.when(
                 loading: () => const CategoryGridSkeleton(count: 12, columns: 4),
                 error: (error, _) => ErrorStateWidget(
                   failure: ErrorMapper.toFailure(error),
-                  onRetry: () => ref.invalidate(categoriesProvider),
+                  onRetry: () => ref.invalidate(categoryTreeProvider),
                 ),
-                data: (items) {
-                  if (items.isEmpty) {
+                data: (tree) {
+                  final sections = _sections(tree);
+                  if (sections.isEmpty) {
                     return const EmptyStateWidget(
                       icon: Icons.category_outlined,
                       title: 'No categories yet',
@@ -169,24 +155,25 @@ class CategoriesScreen extends ConsumerWidget {
                     );
                   }
 
-                  final grouped = _groupCategories(items);
-
                   return SoundRefreshIndicator(
-                    onRefresh: () async => ref.invalidate(categoriesProvider),
+                    onRefresh: () async => ref.invalidate(categoryTreeProvider),
                     child: ListView.builder(
-                      padding: EdgeInsets.fromLTRB(AppSpacing.gutter, 4, AppSpacing.gutter, 24),
-                      itemCount: grouped.length,
-                      itemBuilder: (context, sectionIndex) {
-                        final sectionTitle = grouped.keys.elementAt(sectionIndex);
-                        final sectionCategories = grouped[sectionTitle]!;
-
+                      padding: EdgeInsets.fromLTRB(
+                        AppSpacing.gutter,
+                        4,
+                        AppSpacing.gutter,
+                        24,
+                      ),
+                      itemCount: sections.length,
+                      itemBuilder: (context, index) {
+                        final (title, children) = sections[index];
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
                               padding: const EdgeInsets.fromLTRB(2, 16, 2, 10),
                               child: Text(
-                                sectionTitle,
+                                title,
                                 style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 19,
@@ -198,7 +185,7 @@ class CategoriesScreen extends ConsumerWidget {
                             GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              itemCount: sectionCategories.length,
+                              itemCount: children.length,
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 4,
@@ -206,10 +193,10 @@ class CategoriesScreen extends ConsumerWidget {
                                 crossAxisSpacing: 8,
                                 childAspectRatio: 0.72,
                               ),
-                              itemBuilder: (context, index) {
-                                final category = sectionCategories[index];
+                              itemBuilder: (context, gridIndex) {
+                                final category = children[gridIndex];
                                 return StaggeredEntrance(
-                                  index: index,
+                                  index: gridIndex,
                                   child: CategoryCard(
                                     category: category,
                                     size: 70,

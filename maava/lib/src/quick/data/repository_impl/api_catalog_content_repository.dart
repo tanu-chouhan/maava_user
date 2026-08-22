@@ -2,16 +2,32 @@ import '../../core/network/api_client.dart';
 import '../../core/utils/logger.dart';
 import '../../domain/model/banner.dart';
 import '../../domain/model/cms_page.dart';
+import '../../domain/model/sale_campaign.dart';
 import '../../domain/repository/catalog_content_repository.dart';
 import '../dto/banner_dto.dart';
 import '../dto/json_reader.dart';
 import '../mapper/banner_mapper.dart';
 import 'api_paths.dart';
+import '../../../di/fee_settings_providers.dart' show parseTipPresets;
+import '../../../shared/widgets/tip_your_driver_card.dart' show kDefaultTipPresets;
 
 class ApiCatalogContentRepository implements CatalogContentRepository {
-  ApiCatalogContentRepository(this._client);
+  ApiCatalogContentRepository(this._client, {String? Function()? zoneId})
+      : _zoneId = zoneId ?? _noZone;
 
   final ApiClient _client;
+
+  /// The zone serving the shopper, read fresh on each call. Sending no zone
+  /// asks for the unfiltered catalogue.
+  final String? Function() _zoneId;
+
+  static String? _noZone() => null;
+
+  Map<String, dynamic> get _zoneQuery {
+    final id = _zoneId();
+    return (id == null || id.isEmpty) ? const {} : {'zoneId': id};
+  }
+
 
   @override
   Future<List<PromoBanner>> heroBanners() => _banners(ApiPaths.heroBanners);
@@ -22,6 +38,32 @@ class ApiCatalogContentRepository implements CatalogContentRepository {
   @override
   Future<List<PromoBanner>> promotionBanners() =>
       _banners(ApiPaths.promotionBanners);
+
+  /// Every live campaign: the default plus one per header category.
+  ///
+  /// Fetched in one call so switching category is instant — a per-tap request
+  /// would put a network round trip in the middle of the theme transition.
+  @override
+  Future<List<SaleCampaign>> martSaleCampaigns() async {
+    AppLogger.debug('GET ${ApiPaths.martSaleCampaign}', scope: 'campaign');
+    try {
+      final json = await _client.get(ApiPaths.martSaleCampaign, query: _zoneQuery);
+      if (json is! Map<String, dynamic>) return const [];
+      final list = json['campaigns'];
+      if (list is List) {
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(SaleCampaign.fromJson)
+            .toList();
+      }
+      // Older backend shape: a single campaign object.
+      return [SaleCampaign.fromJson(json)];
+    } catch (e) {
+      // A promotion failing to load must never take the home screen with it.
+      AppLogger.debug('campaign fetch failed: $e', scope: 'campaign');
+      return const [];
+    }
+  }
 
   Future<List<PromoBanner>> _banners(String path) async {
     AppLogger.debug('GET $path', scope: 'banners');
@@ -76,25 +118,40 @@ class ApiCatalogContentRepository implements CatalogContentRepository {
   }
 
   @override
-  Future<({double freeDeliveryThreshold, double baseDeliveryFee})>
+  Future<String> storeName() async {
+    final json = await _client.get(ApiPaths.businessSettings);
+    if (json is! Map<String, dynamic>) return '';
+    // The payload is sometimes the settings document itself and sometimes
+    // wrapped; read whichever carries the name.
+    final settings = json.mapOrNull('businessSettings') ?? json;
+    return settings.str('companyName').trim();
+  }
+
+  @override
+  Future<({double freeDeliveryThreshold, double baseDeliveryFee, List<double> tipPresets})>
       feeSettings() async {
     final json = await _client.get(ApiPaths.feeSettings);
     final settings =
         json is Map<String, dynamic> ? json.mapOrNull('feeSettings') : null;
+    // Zero means "no free-delivery offer", which is what the UI needs to hide
+    // the progress bar rather than show a target nobody set.
     if (settings == null) {
-      return (freeDeliveryThreshold: 199.0, baseDeliveryFee: 0.0);
+      return (
+        freeDeliveryThreshold: 0.0,
+        baseDeliveryFee: 0.0,
+        tipPresets: kDefaultTipPresets,
+      );
     }
 
-    // The fee table is distance-banded, not order-value-banded, so there is no
-    // literal free-delivery threshold upstream. A zero-fee band, when one
-    // exists, is the closest real signal; otherwise we fall back to the
-    // configured default. Flagged in README → Backend Gaps.
-    final ranges = settings.objects('deliveryFeeRanges');
-    final freeBand = ranges.where((r) => r.dbl('fee') <= 0);
-
+    // `freeDeliveryThreshold` is now a real admin-panel field. It used to be
+    // guessed from a zero-fee band in the distance-banded fee table, falling
+    // back to a compiled-in 199 — so the cart promised free delivery at a
+    // number no one had configured.
     return (
-      freeDeliveryThreshold: freeBand.isEmpty ? 199.0 : freeBand.first.dbl('max', 199),
+      freeDeliveryThreshold: settings.dbl('freeDeliveryThreshold'),
       baseDeliveryFee: settings.dbl('deliveryFee'),
+      // Same admin field the Food cart reads, scoped to the quick vertical.
+      tipPresets: parseTipPresets(settings['tipPresets']),
     );
   }
 }

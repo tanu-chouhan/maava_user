@@ -40,12 +40,23 @@ abstract final class ApiPaths {
   static const topBanners = '/quick/top-banners/public';
   static const promotionBanners = '/quick/hero-banners/home-promotion/public';
 
+  /// Admin-configured Mart promotion (the sale banner's title, dates, tiles).
+  static const martSaleCampaign = '/quick/mart-sale-campaign/public';
+
   // CMS pages — modules/food/landing (`/pages/:key`), keys: terms, privacy,
   // refund, shipping, cancellation, support, about.
   static String page(String key) => '/quick/pages/$key';
 
   // Public settings — modules/food/admin
   static const feeSettings = '/quick/admin/fee-settings/public';
+
+  /// Which delivery zone a coordinate falls in. The polygon test is the
+  /// backend's; the app only supplies the point.
+  static const zoneDetect = '/quick/zones/detect';
+
+  /// Business identity the admin panel publishes — the storefront name shown
+  /// in the app header lives here rather than being compiled in.
+  static const businessSettings = '/quick/admin/business-settings/public';
 
   // Orders — modules/food/orders/routes/order.routes.user.js
   static const orders = '/quick/orders';

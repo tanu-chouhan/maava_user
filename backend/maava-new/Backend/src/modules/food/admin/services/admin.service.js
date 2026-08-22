@@ -2267,6 +2267,8 @@ export async function upsertFeeSettings(body) {
             $set.freeDeliveryThreshold = body.freeDeliveryThreshold;
         }
 
+        if (body.tipPresets !== undefined) $set.tipPresets = body.tipPresets;
+
         if (body.isActive !== undefined) $set.isActive = body.isActive;
 
         const update = {};
@@ -2289,6 +2291,7 @@ export async function upsertFeeSettings(body) {
     }
     if (body.quickDeliveryFee !== undefined && body.quickDeliveryFee !== null) payload.quickDeliveryFee = body.quickDeliveryFee;
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
+    if (body.tipPresets !== undefined) payload.tipPresets = body.tipPresets;
 
     console.log('[DEBUG] Creating NEW settings with payload:', JSON.stringify(payload, null, 2));
     const created = await FoodFeeSettings.create(payload);

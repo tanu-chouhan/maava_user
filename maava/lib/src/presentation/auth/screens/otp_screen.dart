@@ -299,7 +299,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         height: 240,
                         width: double.infinity,
                         child: SmartImage(
-                          url: 'assets/images/about_hero.png',
+                          url: 'assets/images/login_hero.png',
                           category: ImageCategory.food,
                           fit: BoxFit.cover,
                         ),

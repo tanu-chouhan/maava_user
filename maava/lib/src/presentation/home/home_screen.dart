@@ -1,4 +1,3 @@
-import 'dart:developer' as developer;
 import '../common_widgets/app_refresh_indicator.dart';
 import '../common_widgets/skeleton_loading.dart';
 import '../common_widgets/exit_confirmation_dialog.dart';
@@ -27,6 +26,7 @@ import 'widgets/popular_brands_list.dart';
 import 'widgets/promo_banner_carousel.dart';
 import 'widgets/popular_items_list.dart';
 import 'widgets/restaurant_card.dart';
+import '../../quick/ui/common/widgets/inputs/search_bar_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -344,6 +344,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// Rotating search hints, taken from the categories the backend returned so
+  /// the field never advertises something the menu does not have.
+  List<String> get _searchHints {
+    final names = ref
+        .read(homeViewModelProvider)
+        .categories
+        .asData
+        ?.value
+        .map((c) => c.name.trim())
+        .where((n) => n.isNotEmpty)
+        .toList();
+    return (names == null || names.isEmpty) ? const ['dishes'] : names;
+  }
+
   /// 2. Search Bar + Voice Search (Container 1) & VEG Toggle Pill (Container 2)
   Widget _buildSearchBar(BuildContext context, bool isDark) {
     final isVegOnly = ref.watch(vegFilterProvider);
@@ -351,88 +365,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       padding: EdgeInsets.symmetric(horizontal: 16.0.w),
       child: Row(
         children: [
-          // Container 1: Search Bar + Voice Search Mic
+          // Container 1: the shared animated search field.
+          //
+          // Food used to draw its own static bar with a fixed hint string. This
+          // is the same widget Mart uses -- rotating hints, same shape, same
+          // motion -- so the two verticals no longer drift apart, and its hints
+          // are the real category names rather than a compiled-in list.
           Expanded(
-            child: Container(
-              height: 50.h,
-              padding: EdgeInsets.symmetric(horizontal: 14.w),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(
-                  color: isDark
-                      ? AppColors.borderDark
-                      : const Color(0xFFEEEEEE),
-                  width: 1,
-                ),
-                boxShadow: isDark
-                    ? []
-                    : [
-                        BoxShadow(
-                          color: AppColors.shadow1,
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        Haptics.light();
-                        context.push(RouteNames.search);
-                      },
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.search,
-                            color: isDark
-                                ? AppColors.textSecondaryDark
-                                : AppColors.textSecondaryLight,
-                            size: 20.sp,
-                          ),
-                          SizedBox(width: 8.w),
-                          Expanded(
-                            child: Text(
-                              "Search for 'Pizza', 'Burger', 'Fries'...",
-                              style: TextStyle(
-                                color: isDark
-                                    ? AppColors.textSecondaryDark
-                                    : AppColors.textSecondaryLight,
-                                fontSize: 11.5.sp,
-                               // fontStyle: FontStyle.italic,
-                                fontWeight: FontWeight.w400,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () async {
-                      Haptics.light();
-                      final query = await VoiceSearchDialog.show(context);
-                      if (query != null && query.trim().isNotEmpty && context.mounted) {
-                        developer.log('[VOICE] Navigation started to SearchScreen with query: "$query"', name: 'VOICE');
-                        developer.log('[VOICE] Search query passed: "$query"', name: 'VOICE');
-                        context.push(RouteNames.search, extra: query.trim());
-                        developer.log('[VOICE] Navigation completed', name: 'VOICE');
-                      }
-                    },
-                    child: Icon(
-                      Icons.mic,
-                      color: isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondaryLight,
-                      size: 20.sp,
-                    ),
-                  ),
-                ],
-              ),
+            child: SearchBarWidget(
+              readOnly: true,
+              hintRotation: _searchHints,
+              onTap: () {
+                Haptics.light();
+                context.push(RouteNames.search);
+              },
+              onMicTap: () async {
+                Haptics.light();
+                final query = await VoiceSearchDialog.show(context);
+                if (query != null && query.trim().isNotEmpty && context.mounted) {
+                  context.push(RouteNames.search, extra: query.trim());
+                }
+              },
             ),
           ),
           SizedBox(width: 10.w),

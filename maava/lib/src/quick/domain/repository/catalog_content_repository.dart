@@ -1,4 +1,5 @@
 import '../model/banner.dart';
+import '../model/sale_campaign.dart';
 import '../model/cms_page.dart';
 
 /// Home-screen merchandising content (banners, promo strips) from the
@@ -16,5 +17,11 @@ abstract interface class CatalogContentRepository {
 
   /// Free-delivery threshold and fee configuration, used for the cart's
   /// "add ₹X more for free delivery" nudge.
-  Future<({double freeDeliveryThreshold, double baseDeliveryFee})> feeSettings();
+  Future<({double freeDeliveryThreshold, double baseDeliveryFee, List<double> tipPresets})> feeSettings();
+
+  /// The storefront name the admin has set, or empty when unset.
+  Future<String> storeName();
+
+  /// Live Mart promotions: the default plus one per header category.
+  Future<List<SaleCampaign>> martSaleCampaigns();
 }

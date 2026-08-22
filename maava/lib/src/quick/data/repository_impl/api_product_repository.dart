@@ -17,11 +17,29 @@ import '../mapper/product_mapper.dart';
 import 'api_paths.dart';
 
 class ApiProductRepository implements ProductRepository {
-  ApiProductRepository(this._client, {CatalogGroupingService? grouping})
-      : _grouping = grouping ?? const CatalogGroupingService();
+  ApiProductRepository(
+    this._client, {
+    CatalogGroupingService? grouping,
+    String? Function()? zoneId,
+  })  : _grouping = grouping ?? const CatalogGroupingService(),
+        _zoneId = zoneId ?? _noZone;
 
   final ApiClient _client;
   final CatalogGroupingService _grouping;
+
+  /// The zone serving the shopper, read fresh on each call so changing address
+  /// takes effect without rebuilding the repository. Mart stock is zone-scoped;
+  /// sending no zone asks for the unfiltered catalogue, which is what a shopper
+  /// with no address set should still see.
+  final String? Function() _zoneId;
+
+  static String? _noZone() => null;
+
+  /// Query fragment every catalogue read carries.
+  Map<String, dynamic> get _zoneQuery {
+    final id = _zoneId();
+    return (id == null || id.isEmpty) ? const {} : {'zoneId': id};
+  }
 
   /// Brands are derived from the catalog, which is expensive to re-scan; the
   /// result is stable for a session, so it is cached here.
@@ -39,6 +57,7 @@ class ApiProductRepository implements ProductRepository {
     final json = await _client.get(
       ApiPaths.searchProducts,
       query: {
+        ..._zoneQuery,
         if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
         if (categoryId != null && categoryId.isNotEmpty) 'categoryId': categoryId,
         if (vegOnly) 'isVeg': 'true',
@@ -154,7 +173,10 @@ class ApiProductRepository implements ProductRepository {
 
   @override
   Future<List<Seller>> sellers({int limit = 20}) async {
-    final json = await _client.get(ApiPaths.sellers, query: {'limit': limit});
+    final json = await _client.get(
+      ApiPaths.sellers,
+      query: {..._zoneQuery, 'limit': limit},
+    );
     if (json is! Map<String, dynamic>) {
       AppLogger.debug('sellers: unexpected payload ${json.runtimeType}', scope: 'quick.api');
       return const [];

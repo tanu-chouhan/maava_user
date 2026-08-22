@@ -11,6 +11,7 @@ import '../../common_widgets/smart_image.dart';
 import '../../favorites/viewmodels/favorites_viewmodel.dart';
 import '../../navigation/route_names.dart';
 import '../../restaurant/viewmodels/restaurant_detail_viewmodel.dart';
+import '../../restaurant/widgets/auto_scrolling_offers.dart';
 
 class RestaurantCard extends ConsumerStatefulWidget {
   final RestaurantModel restaurant;
@@ -467,37 +468,32 @@ class _RestaurantInfo extends ConsumerWidget {
         // disappears the moment the restaurant removes the offer.
         if (restaurant.offerBadges.isNotEmpty) ...[
           SizedBox(height: 5.h),
-          Row(
-            children: [
-              Icon(
-                Icons.local_offer_rounded,
-                size: 13.sp,
-                color: AppColors.primary,
-              ),
-              SizedBox(width: 4.w),
-              Expanded(
-                child: Text(
-                  restaurant.offerBadges.first,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                    letterSpacing: -0.1,
+          AutoScrollingOffers(
+            offers: restaurant.offerBadges,
+            height: 18.h,
+            itemBuilder: (context, offer) => Row(
+              children: [
+                Icon(
+                  Icons.local_offer_rounded,
+                  size: 13.sp,
+                  color: AppColors.primary,
+                ),
+                SizedBox(width: 4.w),
+                Expanded(
+                  child: Text(
+                    offer,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                      letterSpacing: -0.1,
+                    ),
                   ),
                 ),
-              ),
-              if (restaurant.offerBadges.length > 1)
-                Text(
-                  '+${restaurant.offerBadges.length - 1} more',
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary.withValues(alpha: 0.75),
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
         ],
 

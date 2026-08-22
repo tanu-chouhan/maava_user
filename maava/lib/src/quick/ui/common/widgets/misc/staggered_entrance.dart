@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_durations.dart';
@@ -36,6 +38,8 @@ class _StaggeredEntranceState extends State<StaggeredEntrance>
     duration: AppDurations.medium,
   );
 
+  Timer? _entrance;
+
   @override
   void initState() {
     super.initState();
@@ -43,13 +47,17 @@ class _StaggeredEntranceState extends State<StaggeredEntrance>
       _controller.value = 1;
       return;
     }
-    Future.delayed(AppDurations.staggerStep * widget.index, () {
+    // Held so it can be cancelled: `Future.delayed` leaves a timer pending
+    // after the widget is gone. The `mounted` guard keeps that harmless in the
+    // app, but a disposed card should not still be waiting to animate.
+    _entrance = Timer(AppDurations.staggerStep * widget.index, () {
       if (mounted) _controller.forward();
     });
   }
 
   @override
   void dispose() {
+    _entrance?.cancel();
     _controller.dispose();
     super.dispose();
   }

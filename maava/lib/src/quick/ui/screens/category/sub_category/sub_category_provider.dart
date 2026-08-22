@@ -42,8 +42,13 @@ class SubCategoryController extends Notifier<SubCategoryState> {
         products = [...products, ...page.items];
       }
 
-      final grouping = ref.read(catalogGroupingServiceProvider);
-      final subCategories = grouping.subCategoriesFrom(products, arg);
+      // The admin's real subcategories, not names guessed from the products.
+      // This used to call `subCategoriesFrom(products, arg)` directly, so the
+      // rail showed brand/product names ('cherry') instead of 'Fresh Fruits',
+      // 'Chargers', … The repository falls back to that same grouping for
+      // legacy categories that have no children, so nothing goes blank.
+      final subCategories =
+          await ref.read(categoryRepositoryProvider).subCategoriesOf(arg);
 
       state = state.copyWith(
         subCategories: subCategories,

@@ -19,8 +19,10 @@ class Store99Service {
     return _repository.getBrands();
   }
 
-  Future<ApiResponse<List<Store99Product>>> getTrendingDishes() async {
-    final response = await _repository.getTrendingDishes();
+  Future<ApiResponse<List<Store99Product>>> getTrendingDishes({
+    String cuisineId = 'all',
+  }) async {
+    final response = await _repository.getTrendingDishes(cuisineId: cuisineId);
     if (response.isSuccess && response.data != null) {
       final eligible = response.data!.where((p) => p.price <= 99.0).toList();
       return ApiResponse.success(eligible);

@@ -94,6 +94,8 @@ const pricingSchema = new mongoose.Schema(
         deliveryMode: { type: String, enum: ['basic', 'quick'], default: 'basic' },
         restaurantCommission: { type: Number, default: 0, min: 0 },
         discount: { type: Number, default: 0, min: 0 },
+        /** Voluntary tip, paid straight through to the delivery partner. */
+        deliveryTip: { type: Number, default: 0, min: 0 },
         couponCode: { type: String, default: null, trim: true, uppercase: true },
         total: { type: Number, required: true, min: 0 },
         currency: { type: String, default: 'INR' },

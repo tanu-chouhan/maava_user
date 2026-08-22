@@ -331,6 +331,15 @@ class CartController extends Notifier<CartState> {
     }
   }
 
+  /// Sets the delivery-partner tip and reprices, so the bill and the pay button
+  /// move with the chip the shopper just tapped.
+  Future<void> setDeliveryTip(double amount) async {
+    final tip = amount < 0 ? 0.0 : amount;
+    if (state.cart.deliveryTip == tip) return;
+    state = state.copyWith(cart: state.cart.copyWith(deliveryTip: tip));
+    await priceNow();
+  }
+
   Future<CouponOutcome> applyCoupon(Coupon coupon) async {
     state = state.copyWith(isPricing: true, clearFailure: true);
     try {

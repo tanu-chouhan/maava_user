@@ -8,7 +8,9 @@ import '../model/store99_product.dart';
 abstract class Store99Repository {
   Future<ApiResponse<List<Store99Cuisine>>> getCuisines();
   Future<ApiResponse<List<Store99Brand>>> getBrands();
-  Future<ApiResponse<List<Store99Product>>> getTrendingDishes();
+  Future<ApiResponse<List<Store99Product>>> getTrendingDishes({
+    String cuisineId,
+  });
   Future<ApiResponse<List<Store99Product>>> getExploreProducts({
     String cuisineId = 'all',
     int page = 1,

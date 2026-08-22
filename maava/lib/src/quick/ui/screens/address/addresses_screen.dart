@@ -42,6 +42,17 @@ class AddressesScreen extends ConsumerWidget {
           label: 'Add a new address',
           icon: Icons.add_location_alt_rounded,
           onPressed: () async {
+            // Saving an address needs a session. A guest could reach the
+            // picker, fill the whole form and only find out on submit, where
+            // the failure surfaced as a bare "Something went wrong" — the
+            // request had no token to send.
+            if (!ref.read(authProvider).isSignedIn) {
+              await context.push(
+                RoutePaths.loginFrom(RoutePaths.addressSelection),
+              );
+              if (!context.mounted) return;
+              if (!ref.read(authProvider).isSignedIn) return;
+            }
             await context.push(RoutePaths.addressSelection);
             await controller.load();
           },

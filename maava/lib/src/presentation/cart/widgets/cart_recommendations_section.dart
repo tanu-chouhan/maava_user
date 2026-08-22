@@ -28,43 +28,43 @@ class CartRecommendationsSection extends ConsumerStatefulWidget {
 class _CartRecommendationsSectionState extends ConsumerState<CartRecommendationsSection> {
   int _selectedTabIndex = 0;
 
-  final List<String> _categories = const ['Popular', 'Beverages', 'Sides'];
+  /// Tabs: "Popular" (the API's own recommended flag) followed by the real
+  /// menu sections this seller has.
+  ///
+  /// These were three fixed tabs — Popular, Beverages, Sides — whose contents
+  /// were decided by hardcoded keyword lists matched against item names
+  /// ('fries', 'roti', 'lassi', …). A seller seeing neither word got two empty
+  /// tabs, and an item was filed by whether its name happened to contain a
+  /// keyword rather than by the category the seller actually put it in.
+  static const _popularTab = 'Popular';
 
-  List<FoodModel> _filterItemsForTab(List<FoodModel> items, int tabIndex) {
-    if (items.isEmpty) return [];
-
-    switch (tabIndex) {
-      case 0: // Popular
-        final popular = items.where((f) => f.isPopular).toList();
-        return popular.isNotEmpty ? popular : items.take(6).toList();
-
-      case 1: // Beverages
-        final drinksKeywords = [
-          'drink', 'beverage', 'coffee', 'tea', 'frappuccino', 'mojito', 
-          'soda', 'shake', 'juice', 'cold', 'coke', 'pepsi', 'lassi', 'water', 'chai'
-        ];
-        final beverages = items.where((f) {
-          final text = '${f.name} ${f.description}'.toLowerCase();
-          return drinksKeywords.any((keyword) => text.contains(keyword));
-        }).toList();
-
-        return beverages;
-
-      case 2: // Sides
-        final sidesKeywords = [
-          'fries', 'side', 'roti', 'paratha', 'bread', 'muffin', 'sandwich',
-          'dosa', 'starter', 'snack', 'sauce', 'dip', 'nuggets', 'wedges', 'salad', 'khichdi'
-        ];
-        final sides = items.where((f) {
-          final text = '${f.name} ${f.description}'.toLowerCase();
-          return sidesKeywords.any((keyword) => text.contains(keyword));
-        }).toList();
-
-        return sides;
-
-      default:
-        return items;
+  /// Capped at three so the pill row keeps its existing look: three
+  /// equal-width tabs. The two section tabs are the seller's biggest menu
+  /// sections rather than a fixed pair of guesses.
+  List<String> _tabsFor(List<FoodModel> items) {
+    final counts = <String, int>{};
+    for (final item in items) {
+      final name = item.categoryName.trim();
+      if (name.isEmpty || name == _popularTab) continue;
+      counts[name] = (counts[name] ?? 0) + 1;
     }
+    final sections = counts.keys.toList()
+      ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
+    return [_popularTab, ...sections.take(2)];
+  }
+
+  List<FoodModel> _filterItemsForTab(
+    List<FoodModel> items,
+    int tabIndex,
+    List<String> tabs,
+  ) {
+    if (items.isEmpty || tabIndex >= tabs.length) return const [];
+    if (tabIndex == 0) {
+      final popular = items.where((f) => f.isPopular).toList();
+      return popular.isNotEmpty ? popular : items.take(6).toList();
+    }
+    final section = tabs[tabIndex];
+    return items.where((f) => f.categoryName.trim() == section).toList();
   }
 
   @override
@@ -80,7 +80,10 @@ class _CartRecommendationsSectionState extends ConsumerState<CartRecommendations
     return menuAsync.when(
       data: (items) {
         final rawItems = isVegOnly ? items.where((f) => f.isVeg).toList() : items;
-        final filteredItems = _filterItemsForTab(rawItems, _selectedTabIndex);
+        final tabs = _tabsFor(rawItems);
+        // The menu can change under a selected tab (the veg filter, a refresh).
+        final tabIndex = _selectedTabIndex < tabs.length ? _selectedTabIndex : 0;
+        final filteredItems = _filterItemsForTab(rawItems, tabIndex, tabs);
         if (filteredItems.isEmpty && rawItems.isEmpty) {
           return const SizedBox.shrink();
         }
@@ -137,7 +140,7 @@ class _CartRecommendationsSectionState extends ConsumerState<CartRecommendations
 
               const SizedBox(height: 14),
 
-              // Category Tabs Row (Popular, Beverages, Sides)
+              // Category Tabs Row: Popular + the seller's own menu sections
               Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
@@ -145,8 +148,8 @@ class _CartRecommendationsSectionState extends ConsumerState<CartRecommendations
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Row(
-                  children: List.generate(_categories.length, (index) {
-                    final isSelected = _selectedTabIndex == index;
+                  children: List.generate(tabs.length, (index) {
+                    final isSelected = tabIndex == index;
                     return Expanded(
                       child: GestureDetector(
                         onTap: () {
@@ -173,7 +176,7 @@ class _CartRecommendationsSectionState extends ConsumerState<CartRecommendations
                           ),
                           child: Center(
                             child: Text(
-                              _categories[index],
+                              tabs[index],
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,

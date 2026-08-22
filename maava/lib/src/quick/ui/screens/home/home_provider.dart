@@ -7,6 +7,7 @@ import '../../../di/service_providers.dart';
 import '../../../domain/model/order.dart';
 import '../../../domain/model/product.dart';
 import 'home_state.dart';
+import '../../../di/zone_providers.dart';
 
 /// Builds the home screen from the real catalog.
 ///
@@ -16,6 +17,11 @@ import 'home_state.dart';
 class HomeController extends Notifier<HomeState> {
   @override
   HomeState build() {
+    // Rebuilds when the shopper's zone resolves or changes, so the whole feed
+    // re-fetches for the new zone. Mart stock is zone-scoped: without this the
+    // page would keep showing another zone's catalogue after a change of
+    // address until the app was restarted.
+    ref.watch(martZoneIdProvider);
     Future.microtask(load);
     return const HomeState();
   }
@@ -54,9 +60,14 @@ class HomeController extends Notifier<HomeState> {
         'promotion = ${hero.length} in header, ${top.length} in the strip',
         scope: 'banners',
       );
+      // Fetched alongside the banners because it is the same kind of
+      // admin-managed merchandising, and it fails the same way: null just means
+      // no promotion is scheduled.
+      final campaigns = await content.martSaleCampaigns();
       state = state.copyWith(
         heroBanners: hero,
         topBanners: top,
+        campaigns: campaigns,
         isLoadingBanners: false,
       );
     } catch (e, stack) {
@@ -101,8 +112,15 @@ class HomeController extends Notifier<HomeState> {
     );
 
     try {
-      final categories = await ref.read(categoryRepositoryProvider).topLevel();
-      state = state.copyWith(categories: categories, isLoadingCategories: false);
+      // One request for the whole tree: `topLevel()` fetches the same flat list
+      // and throws the children away, so asking for both would double the call.
+      final allCategories = await ref.read(categoryRepositoryProvider).all();
+      final categories = allCategories.where((c) => c.isCore).toList();
+      state = state.copyWith(
+        categories: categories,
+        allCategories: allCategories,
+        isLoadingCategories: false,
+      );
 
       final products = ref.read(productRepositoryProvider);
       final grouping = ref.read(catalogGroupingServiceProvider);
@@ -239,6 +257,14 @@ class HomeController extends Notifier<HomeState> {
     }
   }
 
+
+  /// Selects a header category, re-theming the page from that category's
+  /// campaign. Purely local: every campaign was fetched up front, so the
+  /// transition needs no request.
+  void selectCategory(String categoryId) {
+    if (state.selectedCategoryId == categoryId) return;
+    state = state.copyWith(selectedCategoryId: categoryId);
+  }
 }
 
 final homeProvider = NotifierProvider<HomeController, HomeState>(HomeController.new);

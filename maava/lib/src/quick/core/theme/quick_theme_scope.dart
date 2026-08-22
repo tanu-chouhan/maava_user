@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../presentation/branding/theme_color_provider.dart';
+import '../../../shared/theme/mart_brand.dart';
+import '../../ui/common/widgets/misc/status_bar_style.dart';
 import 'app_colors.dart';
 import 'app_theme.dart';
 
@@ -12,12 +13,21 @@ import 'app_theme.dart';
 /// extension — without this scope, `context.semantic` falls back to defaults on
 /// a theme that never registered the extension.
 ///
-/// The brand comes from [themeColorProvider] — the single app-wide palette
-/// App Theme writes. It used to come from a second, module-private flavour
-/// setting that the Profile picker never touched, so choosing a palette
-/// repainted the shared screens and left every mart screen on the default teal.
+/// The brand comes from [martBrandProvider] — the colour the admin panel
+/// publishes for the Mart module. This is the ONE place Mart's palette is
+/// decided: every mart screen reads its colours off this `ThemeData` (via
+/// `colorScheme` or `context.semantic`) rather than off a constant, so changing
+/// the admin setting repaints all of them.
+///
 /// Light/dark still follows the app-wide ambient brightness so the two
 /// verticals never disagree on dark mode.
+///
+/// It also sets a DEFAULT status-bar style for the whole module, matched to the
+/// theme's surface. Most Mart screens set none of their own, and a screen with
+/// no style inherits whatever the last one pushed — so arriving at a white
+/// listing from the home screen's deep brand header left white icons on white.
+/// A screen that paints something else behind the bar (home, with its gradient)
+/// wraps itself in its own [StatusBarStyle], which sits deeper and wins.
 class QuickThemeScope extends ConsumerWidget {
   const QuickThemeScope({super.key, required this.child});
 
@@ -25,12 +35,15 @@ class QuickThemeScope extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final palette = ref.watch(themeColorProvider);
-    final brand = QuickBrand(seed: palette.color, accent: palette.buttonColor);
+    final brand = QuickBrand.fromSeed(ref.watch(martBrandProvider));
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final theme = dark ? AppTheme.dark(brand) : AppTheme.light(brand);
     return Theme(
-      data: dark ? AppTheme.dark(brand) : AppTheme.light(brand),
-      child: child,
+      data: theme,
+      child: StatusBarStyle(
+        background: theme.colorScheme.surface,
+        child: child,
+      ),
     );
   }
 }

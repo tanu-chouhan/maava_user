@@ -100,6 +100,8 @@ class ApiPaths {
 
   // ---- CMS / settings ----
   static const String businessSettings = '/food/admin/business-settings/public';
+  /// Module-wise theme colour/font the admin sets under Power Scanning.
+  static const String powerScanning = '/food/admin/power-scanning/public';
   static const String featureSettings = '/food/admin/feature-settings/public';
   static const String feeSettings = '/food/admin/fee-settings/public';
   static String cmsPage(String key) => '/food/pages/$key';

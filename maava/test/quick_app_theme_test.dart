@@ -1,5 +1,8 @@
+import 'dart:ui';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:maava/src/shared/theme/mart_brand.dart';
 import 'package:maava/src/presentation/branding/app_colors.dart';
 import 'package:maava/src/presentation/branding/theme_color_provider.dart';
 import 'package:maava/src/presentation/mode/app_mode.dart';
@@ -8,6 +11,13 @@ import 'package:maava/src/quick/core/local_storage/local_storage.dart';
 import 'package:maava/src/quick/di/repository_providers.dart'
     show localStorageProvider;
 import 'package:shared_preferences/shared_preferences.dart';
+
+const _adminColor = Color(0xFFFF7A00);
+
+class _FixedMartBrand extends MartBrandNotifier {
+  @override
+  Color build() => _adminColor;
+}
 
 /// AppModeNotifier persists through quick's LocalStorage; back it with memory.
 class _MemoryStorage implements LocalStorage {
@@ -30,30 +40,37 @@ class _MemoryStorage implements LocalStorage {
   Future<void> remove(String key) async => _values.remove(key);
 }
 
-/// Profile's "App Theme" row is ONE global setting for the whole app: a colour
-/// picked there must repaint Food *and* Mart. The two modules briefly had
-/// separate palette states, which meant a pick in one section left the other
-/// on its old colour.
+/// Two owners of one brand static. Profile's "App Theme" row owns **Food**;
+/// **Mart** is owned by the operator (Admin → Power Scanning → Mart Module) and
+/// must ignore the in-app pick, or the admin colour is silently overridden the
+/// moment a customer changes their theme.
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('a palette pick applies in Mart', () async {
+  ProviderContainer container() {
     final c = ProviderContainer(
-      overrides: [localStorageProvider.overrideWithValue(_MemoryStorage())],
+      overrides: [
+        localStorageProvider.overrideWithValue(_MemoryStorage()),
+        // Stand in for the admin-published colour; the real notifier fetches it.
+        martBrandProvider.overrideWith(_FixedMartBrand.new),
+      ],
     );
     addTearDown(c.dispose);
+    return c;
+  }
+
+  test('Mart ignores the in-app palette and wears the admin colour', () async {
+    final c = container();
     c.read(appModeProvider.notifier).set(AppMode.quick);
 
     await c.read(themeColorProvider.notifier).setColor(AppThemeColor.pink);
     c.read(activeBrandProvider);
-    expect(AppColors.primary, AppThemeColor.pink.color);
+    expect(AppColors.primary, _adminColor);
   });
 
-  test('the same pick applies in Food — one global palette', () async {
-    final c = ProviderContainer(
-      overrides: [localStorageProvider.overrideWithValue(_MemoryStorage())],
-    );
-    addTearDown(c.dispose);
+  test('Food follows the in-app palette, and a mode round-trip restores it',
+      () async {
+    final c = container();
 
     await c.read(themeColorProvider.notifier).setColor(AppThemeColor.blue);
 
@@ -61,12 +78,14 @@ void main() {
     c.read(activeBrandProvider);
     expect(AppColors.primary, AppThemeColor.blue.color);
 
-    // Switching section must NOT change the colour — this is the regression
-    // that a per-module palette reintroduces.
     c.read(appModeProvider.notifier).set(AppMode.quick);
     c.read(activeBrandProvider);
+    expect(AppColors.primary, _adminColor);
+
+    c.read(appModeProvider.notifier).set(AppMode.food);
+    c.read(activeBrandProvider);
     expect(AppColors.primary, AppThemeColor.blue.color,
-        reason: 'the palette must survive a Food <-> Mart switch');
+        reason: 'the food pick must survive a trip through Mart');
   });
 
   test('teal is selectable as a palette', () {

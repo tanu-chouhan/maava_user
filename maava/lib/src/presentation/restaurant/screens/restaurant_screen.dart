@@ -22,6 +22,7 @@ import '../../navigation/route_names.dart';
 import '../../search/widgets/voice_search_dialog.dart';
 import '../viewmodels/restaurant_state.dart';
 import '../viewmodels/restaurant_viewmodel.dart';
+import '../widgets/auto_scrolling_offers.dart';
 import '../widgets/food_detail_sheet.dart';
 
 class RestaurantScreen extends ConsumerStatefulWidget {
@@ -589,23 +590,29 @@ class _RestaurantScreenState extends ConsumerState<RestaurantScreen> {
                     },
                   ),
                   SizedBox(height: 16.h),
-                  Row(
-                    children: [
-                      _buildStarburstOfferIcon(),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Text(
-                          restaurant.offerBadges.first,
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w800,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF1E1E1E),
+                  AutoScrollingOffers(
+                    offers: restaurant.offerBadges,
+                    height: 24.h,
+                    itemBuilder: (context, offer) => Row(
+                      children: [
+                        _buildStarburstOfferIcon(),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: Text(
+                            offer,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w800,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1E1E1E),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ],

@@ -80,7 +80,10 @@ class _CategoryCardState extends State<CategoryCard> {
                   height: double.infinity,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  fallbackIcon: Icons.shopping_basket_outlined,
+                  // Photo-only, like the header strip: every category in the
+                  // catalogue now carries artwork, so a basket glyph here would
+                  // only ever mean a broken URL — and it read as an icon.
+                  fallbackIcon: null,
                 ),
               ),
             ),

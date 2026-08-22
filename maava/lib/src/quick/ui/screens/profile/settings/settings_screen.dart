@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../di/push_providers.dart';
-import '../../../../../presentation/branding/theme_color_provider.dart';
 import '../../../../../presentation/branding/theme_provider.dart' as app_theme;
-import '../../../../../presentation/branding/theme_color_provider.dart' as app_palette;
 import '../../../../core/local_storage/local_storage.dart';
 import '../../../../core/utils/app_haptics.dart';
-import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../di/repository_providers.dart';
@@ -18,11 +15,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Brightness is app-wide in MAAVA, and the brand is whatever Profile →
-    // App Theme recorded for quick. Both are read from their one owner here
-    // rather than mirrored into a module-private copy that could drift.
     final mode = ref.watch(app_theme.themeProvider);
-    final palette = ref.watch(app_palette.themeColorProvider);
     final storage = ref.watch(localStorageProvider);
     final notificationsOn =
         storage.getBool(StorageKeys.notificationsEnabled) ?? true;
@@ -67,31 +60,6 @@ class SettingsScreen extends ConsumerWidget {
                 },
               ),
             ),
-            const SectionHeader(
-              title: 'Brand colour',
-              subtitle: 'Pick the palette that suits you',
-            ),
-            SizedBox(
-              height: 108,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-                itemCount: AppThemeColor.values.length,
-                separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
-                itemBuilder: (context, index) {
-                  final option = AppThemeColor.values[index];
-                  return _FlavorSwatch(
-                    option: option,
-                    selected: palette == option,
-                    // The same writer Profile → App Theme uses, so the two
-                    // entry points cannot disagree.
-                    onTap: () => ref
-                        .read(app_palette.themeColorProvider.notifier)
-                        .setColor(option),
-                  );
-                },
-              ),
-            ),
             const SectionHeader(title: 'Notifications'),
             SwitchListTile.adaptive(
               value: notificationsOn,
@@ -133,70 +101,4 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _FlavorSwatch extends StatelessWidget {
-  const _FlavorSwatch({
-    required this.option,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final AppThemeColor option;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 120,
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: context.colors.surface,
-          borderRadius: AppRadii.rLg,
-          border: Border.all(
-            color: selected ? option.color : context.semantic.border,
-            width: selected ? 1.8 : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _Dot(color: option.color, size: 26),
-                const SizedBox(width: AppSpacing.xs),
-                _Dot(color: option.buttonColor, size: 18),
-                const Spacer(),
-                if (selected)
-                  Icon(Icons.check_circle_rounded, size: 17, color: option.color),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              option.label,
-              maxLines: 2,
-              style: context.text.titleSmall,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot({required this.color, required this.size});
-
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        height: size,
-        width: size,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      );
 }

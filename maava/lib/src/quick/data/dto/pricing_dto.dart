@@ -10,6 +10,7 @@ class PricingDto {
     this.deliveryFee = 0,
     this.deliveryFeeGst = 0,
     this.platformFee = 0,
+    this.deliveryTip = 0,
     this.quickDeliveryFee = 0,
     this.discount = 0,
     this.total = 0,
@@ -27,6 +28,7 @@ class PricingDto {
   final double deliveryFee;
   final double deliveryFeeGst;
   final double platformFee;
+  final double deliveryTip;
   final double quickDeliveryFee;
   final double discount;
   final double total;
@@ -44,6 +46,7 @@ class PricingDto {
         deliveryFee: json.dbl('deliveryFee'),
         deliveryFeeGst: json.dbl('deliveryFeeGst'),
         platformFee: json.dbl('platformFee'),
+        deliveryTip: json.dbl('deliveryTip'),
         quickDeliveryFee: json.dbl('quickDeliveryFee'),
         discount: json.dbl('discount'),
         total: json.dbl('total'),
@@ -63,6 +66,7 @@ class PricingDto {
         'packagingFee': packagingFee,
         'deliveryFee': deliveryFee,
         'platformFee': platformFee,
+        'deliveryTip': deliveryTip,
         'discount': discount,
         'total': total,
         'currency': currency,

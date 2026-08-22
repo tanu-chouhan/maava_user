@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,10 +20,8 @@ import '../common/widgets/misc/mart_view_cart_bar.dart';
 /// raised into the centre.
 ///
 /// Cart is a plain nav item and carries [cartAnchorKey] so the fly-to-cart
-/// animation still knows where to land from anywhere in the app. Orders keeps
-/// its branch (deep links and Profile → Your orders still reach it) but no
-/// longer has a nav slot.
-class AppShell extends ConsumerWidget {
+/// animation still knows where to land from anywhere in the app.
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
@@ -45,27 +44,40 @@ class AppShell extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cartCount = ref.watch(cartItemCountProvider);
-    final current = navigationShell.currentIndex;
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
 
-    // Back on a tab root used to fall straight through to the OS and close the
-    // app — there is nothing above the shell to pop, and switching tabs with
-    // `go` leaves no history entry behind. Only Home is allowed to exit, and
-    // only after asking.
-    //
-    // Screens pushed on top of the shell (product, order details, checkout …)
-    // are separate routes on the root navigator, so their back press is handled
-    // by the Navigator and never reaches this callback. Deep links are
-    // unaffected for the same reason.
+class _AppShellState extends ConsumerState<AppShell> {
+  bool _isNavVisible = true;
+
+  @override
+  void didUpdateWidget(AppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.navigationShell.currentIndex !=
+        widget.navigationShell.currentIndex) {
+      _isNavVisible = true;
+    }
+  }
+
+  void _go(int index) {
+    if (index != widget.navigationShell.currentIndex) AppHaptics.selection();
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == widget.navigationShell.currentIndex,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cartCount = ref.watch(cartItemCountProvider);
+    final current = widget.navigationShell.currentIndex;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (current != _homeBranchIndex) {
-          // Any other tab returns to Home first, the way a back press is
-          // expected to behave on Android.
-          _go(_homeBranchIndex);
+        if (current != AppShell._homeBranchIndex) {
+          _go(AppShell._homeBranchIndex);
           return;
         }
         await _confirmExit(context);
@@ -74,7 +86,6 @@ class AppShell extends ConsumerWidget {
     );
   }
 
-  /// Home is the only place the app may be closed from, and never silently.
   Future<void> _confirmExit(BuildContext context) async {
     final shouldExit = await AppDialog.confirm(
       context,
@@ -86,75 +97,87 @@ class AppShell extends ConsumerWidget {
     );
     if (!shouldExit) return;
 
-    // `SystemNavigator.pop` backs out of the app the way the OS expects,
-    // leaving it resumable from Recents. `exit(0)` would kill the process and
-    // is what Android's own guidance warns against.
     await SystemNavigator.pop();
   }
 
   Widget _scaffold(BuildContext context, int cartCount, int current) {
     return Scaffold(
-      // Mounted once on the shell rather than per screen: it then covers home,
-      // categories, product listings and search together, and survives tab
-      // switches instead of re-animating on every navigation. Hidden on the
-      // cart branch itself, where a "View Cart" button would point at the
-      // screen you are already on.
       body: Stack(
         children: [
-          navigationShell,
-          if (current != _cartBranchIndex)
+          NotificationListener<UserScrollNotification>(
+            onNotification: (notification) {
+              if (notification.metrics.axis == Axis.vertical) {
+                if (notification.direction == ScrollDirection.reverse) {
+                  if (_isNavVisible) {
+                    setState(() => _isNavVisible = false);
+                  }
+                } else if (notification.direction == ScrollDirection.forward ||
+                    notification.metrics.extentBefore == 0) {
+                  if (!_isNavVisible) {
+                    setState(() => _isNavVisible = true);
+                  }
+                }
+              }
+              return false;
+            },
+            child: widget.navigationShell,
+          ),
+          if (current != AppShell._cartBranchIndex)
             const MartViewCartBar(bottomOffset: 12),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: context.colors.surface,
-          border: Border(top: BorderSide(color: context.semantic.border)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 68,
-            child: Row(
-              children: [
-                for (final item in _left)
-                  Expanded(
-                    child: _NavItem(
-                      spec: item,
-                      selected: current == item.$1,
-                      onTap: () => _go(item.$1),
-                    ),
+      bottomNavigationBar: AnimatedSize(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        child: Container(
+          height: _isNavVisible ? null : 0.0,
+          clipBehavior: _isNavVisible ? Clip.none : Clip.hardEdge,
+          decoration: const BoxDecoration(),
+          child: AnimatedSlide(
+            offset: _isNavVisible ? Offset.zero : const Offset(0, 1.3),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: Container(
+              decoration: BoxDecoration(
+                color: context.colors.surface,
+                border: Border(top: BorderSide(color: context.semantic.border)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  height: 68,
+                  child: Row(
+                    children: [
+                      for (final item in AppShell._left)
+                        Expanded(
+                          child: _NavItem(
+                            spec: item,
+                            selected: current == item.$1,
+                            onTap: () => _go(item.$1),
+                          ),
+                        ),
+                      const Expanded(
+                        child: Center(child: ModeSwitchButton(diameter: 52)),
+                      ),
+                      for (final item in AppShell._right)
+                        Expanded(
+                          child: _NavItem(
+                            spec: item,
+                            selected: current == item.$1,
+                            onTap: () => _go(item.$1),
+                            count: item.$1 == AppShell._cartBranchIndex ? cartCount : 0,
+                            anchorKey:
+                                item.$1 == AppShell._cartBranchIndex ? cartAnchorKey : null,
+                          ),
+                        ),
+                    ],
                   ),
-                const Expanded(
-                  child: Center(child: ModeSwitchButton(diameter: 52)),
                 ),
-                for (final item in _right)
-                  Expanded(
-                    child: _NavItem(
-                      spec: item,
-                      selected: current == item.$1,
-                      onTap: () => _go(item.$1),
-                      count: item.$1 == _cartBranchIndex ? cartCount : 0,
-                      anchorKey:
-                          item.$1 == _cartBranchIndex ? cartAnchorKey : null,
-                    ),
-                  ),
-              ],
+              ),
             ),
           ),
         ),
       ),
-    );
-  }
-
-  void _go(int index) {
-    // Only cue an actual tab change — re-tapping the current tab (which just
-    // pops to its root) should not buzz.
-    if (index != navigationShell.currentIndex) AppHaptics.selection();
-    navigationShell.goBranch(
-      index,
-      // Tapping the active tab pops it back to its root.
-      initialLocation: index == navigationShell.currentIndex,
     );
   }
 }

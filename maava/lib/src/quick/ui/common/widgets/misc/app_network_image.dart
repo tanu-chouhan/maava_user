@@ -24,7 +24,11 @@ class AppNetworkImage extends StatelessWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
-  final IconData fallbackIcon;
+  /// Glyph shown when there is no image, or null for a plain tinted box.
+  ///
+  /// Nullable because some surfaces are photo-only by design — a lone glyph
+  /// among photographs reads as a broken image rather than as an icon.
+  final IconData? fallbackIcon;
 
   /// Out-of-stock products render greyed out.
   final bool desaturated;
@@ -72,10 +76,12 @@ class AppNetworkImage extends StatelessWidget {
         height: height,
         color: context.semantic.surfaceAlt,
         alignment: Alignment.center,
-        child: Icon(
-          fallbackIcon,
-          size: ((height ?? 48) * 0.34).clamp(16, 40),
-          color: context.semantic.textSecondary,
-        ),
+        child: fallbackIcon == null
+            ? null
+            : Icon(
+                fallbackIcon,
+                size: ((height ?? 48) * 0.34).clamp(16, 40),
+                color: context.semantic.textSecondary,
+              ),
       );
 }

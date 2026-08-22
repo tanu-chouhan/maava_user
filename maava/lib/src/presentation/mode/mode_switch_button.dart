@@ -54,7 +54,7 @@ class _ModeSwitchButtonState extends ConsumerState<ModeSwitchButton>
     // `go`, not `push`: switching module replaces the stack rather than piling
     // the other vertical's home on top of this one.
     //
-    // Entering Mart plays the HiberMart opener first; it forwards to the Mart
+    // Entering Mart plays the MaavaMart opener first; it forwards to the Mart
     // home itself once the animation finishes. Mode is already set above, so
     // the opener and everything after it are teal.
     context.go(

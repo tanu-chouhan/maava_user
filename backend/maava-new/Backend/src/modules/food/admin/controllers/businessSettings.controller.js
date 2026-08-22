@@ -39,8 +39,13 @@ const describeServiceAccount = (raw) => {
 const POWER_SCANNING_DEFAULT = {
     user: { themeColor: '#FA0272', fontFamily: 'Poppins' },
     restaurant: { themeColor: '#2563EB', fontFamily: 'Poppins' },
-    delivery: { themeColor: '#00B761', fontFamily: 'Poppins' }
+    delivery: { themeColor: '#00B761', fontFamily: 'Poppins' },
+    // The customer app's Mart (quick-commerce) section. It is a separate entry
+    // from `user` because the two halves of that one app are branded apart.
+    mart: { themeColor: '#068483', fontFamily: 'Poppins' }
 };
+
+const POWER_SCANNING_MODULES = Object.keys(POWER_SCANNING_DEFAULT);
 
 const POWER_SCANNING_FONT_OPTIONS = [
     'Poppins', 'Outfit', 'Inter', 'Roboto', 'Montserrat',
@@ -67,20 +72,11 @@ const normalizeOrderAcceptanceMinutes = (value, fallback = 4) => {
     return Math.max(1, Math.min(20, Math.round(numeric)));
 };
 
-const buildPowerScanningPayload = (payload = {}, existing = POWER_SCANNING_DEFAULT) => ({
-    user: {
-        themeColor: normalizeHexColor(payload?.user?.themeColor, existing?.user?.themeColor || POWER_SCANNING_DEFAULT.user.themeColor),
-        fontFamily: normalizeFontFamily(payload?.user?.fontFamily, existing?.user?.fontFamily || POWER_SCANNING_DEFAULT.user.fontFamily)
-    },
-    restaurant: {
-        themeColor: normalizeHexColor(payload?.restaurant?.themeColor, existing?.restaurant?.themeColor || POWER_SCANNING_DEFAULT.restaurant.themeColor),
-        fontFamily: normalizeFontFamily(payload?.restaurant?.fontFamily, existing?.restaurant?.fontFamily || POWER_SCANNING_DEFAULT.restaurant.fontFamily)
-    },
-    delivery: {
-        themeColor: normalizeHexColor(payload?.delivery?.themeColor, existing?.delivery?.themeColor || POWER_SCANNING_DEFAULT.delivery.themeColor),
-        fontFamily: normalizeFontFamily(payload?.delivery?.fontFamily, existing?.delivery?.fontFamily || POWER_SCANNING_DEFAULT.delivery.fontFamily)
-    }
-});
+const buildPowerScanningPayload = (payload = {}, existing = POWER_SCANNING_DEFAULT) =>
+    Object.fromEntries(POWER_SCANNING_MODULES.map((key) => [key, {
+        themeColor: normalizeHexColor(payload?.[key]?.themeColor, existing?.[key]?.themeColor || POWER_SCANNING_DEFAULT[key].themeColor),
+        fontFamily: normalizeFontFamily(payload?.[key]?.fontFamily, existing?.[key]?.fontFamily || POWER_SCANNING_DEFAULT[key].fontFamily)
+    }]));
 
 const ensurePowerScanningOnSettings = (settingsDocOrPlain = null) => {
     const current = settingsDocOrPlain || {};
@@ -113,10 +109,7 @@ export async function getBusinessSettings(req, res, next) {
 
         // Backfill old docs that might not have powerScanning persisted yet.
         const persistedPowerScanning = settings?.powerScanning || {};
-        const wasMissingAnyModule =
-            !persistedPowerScanning?.user ||
-            !persistedPowerScanning?.restaurant ||
-            !persistedPowerScanning?.delivery;
+        const wasMissingAnyModule = POWER_SCANNING_MODULES.some((key) => !persistedPowerScanning?.[key]);
         if (wasMissingAnyModule) {
             settings.powerScanning = normalizedPowerScanning;
             await settings.save();

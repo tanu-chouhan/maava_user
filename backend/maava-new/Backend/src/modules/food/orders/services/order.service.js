@@ -556,6 +556,7 @@ export async function createOrder(userId, dto) {
         deliveryAddress,
         couponCode: dto.pricing?.couponCode || undefined,
         deliveryMode: dto.deliveryMode || "basic",
+        deliveryTip: Number(dto.deliveryTip) || 0,
       },
       { at: orderAt, restaurant, skipAvailabilityCheck: true },
     );
@@ -574,6 +575,7 @@ export async function createOrder(userId, dto) {
           ? "quick"
           : "basic",
       discount: Number(pricingResult.pricing?.discount) || 0,
+      deliveryTip: Number(pricingResult.pricing?.deliveryTip) || 0,
       couponCode: pricingResult.pricing?.couponCode
         ? String(pricingResult.pricing.couponCode).trim().toUpperCase()
         : null,
@@ -622,7 +624,13 @@ export async function createOrder(userId, dto) {
     }
 
     const feeSettings = await loadActiveFeeSettings();
-    const riderEarning = calculateRiderEarning(feeSettings, distanceKm) || 0;
+    // "100% of your tip goes to them" is what the app promises the customer, so
+    // the tip rides on top of the distance-based pay rather than replacing any
+    // part of it. It is added back to platformProfit below so the platform
+    // neither gains nor loses on it.
+    const deliveryTip = Number(normalizedPricing.deliveryTip) || 0;
+    const riderEarning =
+      (calculateRiderEarning(feeSettings, distanceKm) || 0) + deliveryTip;
     
     // Calculate restaurant commission from subtotal
     let restaurantCommission = 0;
@@ -644,7 +652,10 @@ export async function createOrder(userId, dto) {
       (Number.isFinite(normalizedPricing.deliveryFee) ? normalizedPricing.deliveryFee : 0) +
       (Number.isFinite(normalizedPricing.deliveryFeeGst) ? normalizedPricing.deliveryFeeGst : 0) +
       (Number.isFinite(normalizedPricing.platformFee) ? normalizedPricing.platformFee : 0) +
-      restaurantCommission -
+      restaurantCommission +
+      // Collected from the customer purely to hand on, so it cancels the same
+      // amount inside riderEarning instead of denting the platform's margin.
+      deliveryTip -
       riderEarning;
 
     const isAwaitingOnlinePayment = isAwaitingOnlinePaymentMethod(paymentMethod);

@@ -49,6 +49,11 @@ const businessSettingsSchema = new mongoose.Schema(
             delivery: {
                 themeColor: { type: String, default: '#00B761' },
                 fontFamily: { type: String, default: 'Poppins' }
+            },
+            /** Mart (quick-commerce) section of the customer app. */
+            mart: {
+                themeColor: { type: String, default: '#068483' },
+                fontFamily: { type: String, default: 'Poppins' }
             }
         },
         orderAcceptanceTimeMinutes: { type: Number, default: 4, min: 1, max: 20 },

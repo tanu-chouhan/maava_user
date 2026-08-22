@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../presentation/branding/app_colors.dart';
 import '../../presentation/branding/theme_color_provider.dart';
+import '../../presentation/mode/app_mode.dart';
+import '../../quick/core/theme/app_colors.dart' as quick;
+import 'mart_brand.dart';
 
 /// The brand colour of whichever module is active.
 ///
@@ -14,8 +17,9 @@ import '../../presentation/branding/theme_color_provider.dart';
 /// violet under Food and teal under Quick, with no second copy of anything.
 ///
 /// Food keeps whatever palette the user picked in Profile → App Theme (violet
-/// by default); Quick always uses its own brand teal, since its palette is
-/// chosen in Quick's own Settings and drives its themed subtree already.
+/// by default). Mart does NOT: its colour is set by the operator in Admin →
+/// Power Scanning → Mart Module, so the shared screens follow that while Mart
+/// is the active module and follow the user's pick again back in Food.
 ///
 /// This is the single writer of [AppColors.primary]. `ThemeColorNotifier` only
 /// records the user's choice — two writers would race, and whichever ran last
@@ -29,15 +33,20 @@ class ActiveBrand {
 
 final activeBrandProvider = Provider<ActiveBrand>((ref) {
   final foodPalette = ref.watch(themeColorProvider);
+  final martSeed = ref.watch(martBrandProvider);
 
-  // ONE palette for the whole app. Food and Mart deliberately share it: the
-  // App Theme picker in Profile is a single global setting, so a colour chosen
-  // in either section repaints both. Mart's teal is still in the list — it is
-  // now a choice rather than a fixed per-module brand.
-  final brand = ActiveBrand(
-    primary: foodPalette.color,
-    button: foodPalette.buttonColor,
-  );
+  // Two owners, one static. In Food the palette is the user's; in Mart it is
+  // the admin panel's, and the button shade is derived the same way Mart's own
+  // ThemeData derives its accent so the shared screens match the mart screens.
+  final brand = ref.watch(appModeProvider) == AppMode.quick
+      ? ActiveBrand(
+          primary: martSeed,
+          button: quick.QuickBrand.fromSeed(martSeed).accent,
+        )
+      : ActiveBrand(
+          primary: foodPalette.color,
+          button: foodPalette.buttonColor,
+        );
 
   // Applied here rather than in a listener so the values are in place before
   // the widgets that read them rebuild: every `AppColors.primary` read site

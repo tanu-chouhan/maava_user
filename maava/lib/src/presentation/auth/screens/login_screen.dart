@@ -508,7 +508,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
               height: 260,
               width: double.infinity,
               child: SmartImage(
-                url: 'assets/images/about_hero.png',
+                url: 'assets/images/login_hero.png',
                 category: ImageCategory.food,
                 fit: BoxFit.cover,
               ),

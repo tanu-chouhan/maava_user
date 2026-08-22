@@ -115,7 +115,7 @@ void main() {
       expect(ref.read(appModeProvider), AppMode.quick,
           reason: 'tap $i should land in quick');
       expect(location(), '/mart-splash',
-          reason: 'entering Mart plays the HiberMart opener, which then '
+          reason: 'entering Mart plays the MaavaMart opener, which then '
               'forwards to the Mart home itself');
 
       await tester.tap(find.byType(ModeSwitchButton));

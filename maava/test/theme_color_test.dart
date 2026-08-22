@@ -6,9 +6,19 @@ import 'package:maava/src/presentation/branding/app_theme.dart';
 import 'package:maava/src/presentation/branding/theme_color_provider.dart';
 import 'package:maava/src/presentation/mode/app_mode.dart';
 import 'package:maava/src/shared/theme/active_brand.dart';
+import 'package:maava/src/shared/theme/mart_brand.dart';
 import 'package:maava/src/quick/core/local_storage/local_storage.dart';
 import 'package:maava/src/quick/di/repository_providers.dart' show localStorageProvider;
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// Mart's colour comes from the admin panel over the network; pin it so this
+/// test measures the module switch rather than a fetch.
+const _adminMartColor = Color(0xFFFF7A00);
+
+class _FixedMartBrand extends MartBrandNotifier {
+  @override
+  Color build() => _adminMartColor;
+}
 
 /// In-memory stand-in for the key-value store `main()` injects. The active
 /// brand depends on the persisted module, so the provider graph needs one.
@@ -137,7 +147,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [localStorageProvider.overrideWithValue(_MemoryStorage())],
+        overrides: [
+          localStorageProvider.overrideWithValue(_MemoryStorage()),
+          martBrandProvider.overrideWith(_FixedMartBrand.new),
+        ],
         child: Consumer(
           builder: (context, ref, _) {
             capturedRef = ref;
@@ -166,8 +179,8 @@ void main() {
     capturedRef.read(appModeProvider.notifier).set(AppMode.quick);
     await tester.pumpAndSettle();
 
-    // Same widget, no rebuild of the tree, no restart — quick's brand teal.
-    expect(painted(), AppThemeColor.violet.color,
+    // Same widget, no rebuild of the tree, no restart — Mart's admin colour.
+    expect(painted(), _adminMartColor,
         reason: 'shared screens must follow the active module');
 
     capturedRef.read(appModeProvider.notifier).set(AppMode.food);

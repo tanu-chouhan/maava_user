@@ -48,6 +48,7 @@ class ApiOrderRepository implements OrderRepository {
         if (instructions != null && instructions.trim().isNotEmpty)
           'deliveryInstructions': instructions.trim(),
         'deliveryMode': deliveryMode,
+        if (cart.deliveryTip > 0) 'deliveryTip': cart.deliveryTip,
         'sendCutlery': sendCutlery,
         'paymentMethod': method.orderWireValue,
         if (scheduledAt != null) 'scheduledAt': scheduledAt.toUtc().toIso8601String(),
