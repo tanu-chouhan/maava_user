@@ -1614,6 +1614,9 @@ export async function getCustomers(query = {}) {
         status: u.isActive !== false,
         isActive: u.isActive !== false,
         isVerified: u.isVerified === true,
+        // Missing means allowed: the field was added after these rows existed,
+        // so only an explicit false blocks Cash on Delivery.
+        codEnabled: u.codEnabled !== false,
         totalOrder: stats.totalOrder,
         totalOrderAmount: stats.totalOrderAmount,
         joiningDate: u.createdAt,
